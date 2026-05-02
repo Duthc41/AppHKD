@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "app-tkd",
+  "compatibility_date": "2026-05-02",
+  "observability": {
+    "enabled": true
+  },
+  "assets": {
+    "directory": "a9F3kLm8QxZ7pT2vR6nWc4YhB5dE1uJ0"
+  },
+  "compatibility_flags": [
+    "nodejs_compat"
+  ]
+}
