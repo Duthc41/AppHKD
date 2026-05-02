@@ -1,0 +1,2111 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TKD Grade — Application de préparation aux passages de grade</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #141414;
+    --bg2: #1e1e1e;
+    --bg3: #252525;
+    --bg4: #2c2c2c;
+    --gold: #c9a84c;
+    --gold2: #f0c842;
+    --text: #f0f0f0;
+    --text2: #aaaaaa;
+    --text3: #666666;
+    --green: #4caf7a;
+    --red: #c94c4c;
+    --blue: #4c7fc9;
+    --radius: 10px;
+    --sidebar: 220px;
+    --bottom-nav: 64px;
+    --header-pad: 32px 36px 24px;
+    --content-pad: 28px 36px;
+  }
+
+  /* ── RESET ─────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* ── BASE ──────────────────────────────────── */
+  html { height: 100%; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100%;
+    overflow: hidden; /* body itself fixed; main scrolls */
+  }
+
+  /* ── LAYOUT WRAPPER ────────────────────────── */
+  .app-shell {
+    display: flex;
+    height: 100vh;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  /* ── SIDEBAR (desktop) ─────────────────────── */
+  .sidebar {
+    width: var(--sidebar);
+    height: 100vh;
+    background: var(--bg2);
+    border-right: 1px solid #2a2a2a;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    overflow-y: auto;
+    position: relative;
+    z-index: 100;
+  }
+  .sidebar-logo { padding: 24px 20px 20px; border-bottom: 1px solid #2a2a2a; }
+  .sidebar-logo .app-name { font-family: 'Playfair Display', serif; font-size: 20px; color: var(--gold); letter-spacing: 0.04em; }
+  .sidebar-logo .app-sub { font-size: 10px; color: var(--text3); letter-spacing: 0.15em; text-transform: uppercase; margin-top: 2px; }
+  .nav-items { flex: 1; padding: 16px 0; }
+  .nav-item {
+    display: flex; align-items: center; gap: 12px; padding: 12px 20px;
+    cursor: pointer; transition: all 0.15s; color: var(--text2); font-size: 14px;
+    border-left: 2px solid transparent; margin-bottom: 2px; user-select: none;
+  }
+  .nav-item:hover { background: var(--bg3); color: var(--text); }
+  .nav-item.active { background: rgba(201,168,76,0.08); color: var(--gold); border-left-color: var(--gold); }
+  .nav-icon { font-size: 18px; width: 20px; text-align: center; }
+  .sidebar-footer { padding: 16px 20px; border-top: 1px solid #2a2a2a; font-size: 11px; color: var(--text3); line-height: 1.6; }
+  .sidebar-footer .fftda-badge {
+    display: inline-block; background: rgba(201,168,76,0.1); color: var(--gold);
+    font-size: 10px; padding: 3px 8px; border-radius: 4px; letter-spacing: 0.1em;
+    text-transform: uppercase; margin-top: 4px;
+  }
+
+  /* ── MAIN (scrollable) ─────────────────────── */
+  .main {
+    flex: 1;
+    height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+
+  /* ── VIEWS ─────────────────────────────────── */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ── PAGE HEADER (sticky within .main) ─────── */
+  .page-header {
+    padding: var(--header-pad);
+    border-bottom: 1px solid #222;
+    background: var(--bg2);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+  .page-title { font-family: 'Playfair Display', serif; font-size: 28px; color: var(--text); }
+  .page-title span { color: var(--gold); }
+  .page-subtitle { font-size: 13px; color: var(--text3); margin-top: 4px; letter-spacing: 0.02em; }
+  .breadcrumb { font-size: 12px; color: var(--text3); display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+  .breadcrumb .sep { color: #3a3a3a; }
+  .breadcrumb span.cur { color: var(--gold); }
+
+  /* ── CONTENT ───────────────────────────────── */
+  .content { padding: var(--content-pad); padding-bottom: 60px; }
+
+  /* ── SCROLLBAR (webkit) ────────────────────── */
+  .main::-webkit-scrollbar { width: 5px; }
+  .main::-webkit-scrollbar-track { background: transparent; }
+  .main::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+  .sidebar::-webkit-scrollbar { width: 3px; }
+  .sidebar::-webkit-scrollbar-thumb { background: #2a2a2a; }
+
+  /* ── BOTTOM NAV (mobile only) ──────────────── */
+  .bottom-nav {
+    display: none;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: var(--bottom-nav);
+    background: var(--bg2);
+    border-top: 1px solid #2a2a2a;
+    z-index: 200;
+    flex-direction: row;
+  }
+  .bottom-nav-item {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 3px; cursor: pointer; color: var(--text3);
+    font-size: 10px; padding: 8px 4px; transition: color 0.15s; user-select: none;
+    border-top: 2px solid transparent;
+  }
+  .bottom-nav-item .bnav-icon { font-size: 20px; line-height: 1; }
+  .bottom-nav-item:hover { color: var(--text2); }
+  .bottom-nav-item.active { color: var(--gold); border-top-color: var(--gold); }
+
+  /* ── SCROLL-TO-TOP BUTTON ──────────────────── */
+  #scroll-top-btn {
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    width: 40px; height: 40px;
+    background: var(--bg2);
+    border: 1px solid #3a3a3a;
+    border-radius: 50%;
+    color: var(--gold);
+    font-size: 18px;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 150;
+    transition: all 0.2s;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+  }
+  #scroll-top-btn:hover { background: var(--bg3); border-color: var(--gold); }
+  #scroll-top-btn.visible { display: flex; }
+
+  /* ── BELT CHIPS ────────────────────────────── */
+  .belt-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; }
+  .belt-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .belt-blanche { background: rgba(255,255,255,0.08); color: #ccc; }
+  .belt-blanche .belt-dot { background: #f0f0f0; border: 1px solid #999; }
+  .belt-jaune { background: rgba(240,200,66,0.12); color: #f0c842; }
+  .belt-jaune .belt-dot { background: #f0c842; }
+  .belt-bleue { background: rgba(76,127,201,0.15); color: #7ab0e8; }
+  .belt-bleue .belt-dot { background: #4c7fc9; }
+  .belt-rouge { background: rgba(201,76,76,0.15); color: #e88080; }
+  .belt-rouge .belt-dot { background: #c94c4c; }
+  .belt-noire { background: rgba(201,168,76,0.12); color: var(--gold); }
+  .belt-noire .belt-dot { background: #1a1a1a; border: 1px solid var(--gold); }
+
+  /* ── CARDS ─────────────────────────────────── */
+  .card { background: var(--bg2); border: 1px solid #2a2a2a; border-radius: var(--radius); padding: 20px; }
+  .card-hover { transition: border-color 0.15s, transform 0.15s; cursor: pointer; }
+  .card-hover:hover { border-color: #3a3a3a; transform: translateY(-1px); }
+
+  /* ── GRIDS (responsive) ────────────────────── */
+  .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; }
+
+  /* ── SECTION TITLE ─────────────────────────── */
+  .section-title { font-family: 'Playfair Display', serif; font-size: 16px; color: var(--gold); margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: linear-gradient(to right, #2a2a2a, transparent); }
+
+  /* ── AGE TABS ──────────────────────────────── */
+  .age-tabs { display: flex; gap: 4px; margin-bottom: 24px; background: var(--bg2); padding: 4px; border-radius: var(--radius); border: 1px solid #2a2a2a; flex-wrap: wrap; }
+  .age-tab { flex: 1; min-width: 80px; padding: 10px 12px; text-align: center; cursor: pointer; border-radius: 7px; font-size: 13px; color: var(--text2); transition: all 0.15s; border: 1px solid transparent; }
+  .age-tab:hover { color: var(--text); background: var(--bg3); }
+  .age-tab.active { background: var(--bg3); color: var(--gold); border-color: #3a3a3a; }
+
+  /* ── GRADE CARDS ───────────────────────────── */
+  .grade-card { background: var(--bg2); border: 1px solid #2a2a2a; border-radius: var(--radius); padding: 16px; cursor: pointer; transition: all 0.15s; position: relative; overflow: hidden; }
+  .grade-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
+  .grade-card:hover { border-color: #3a3a3a; transform: translateY(-1px); }
+  .grade-card .grade-num { font-size: 11px; color: var(--text3); margin-bottom: 4px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .grade-card .grade-name { font-size: 14px; color: var(--text); font-weight: 500; margin-bottom: 8px; }
+  .grade-card .grade-poomsae { font-size: 12px; color: var(--text3); }
+  .grade-card.blanche::before { background: #f0f0f0; }
+  .grade-card.jaune::before { background: #f0c842; }
+  .grade-card.bleue::before { background: #4c7fc9; }
+  .grade-card.rouge::before { background: #c94c4c; }
+
+  /* ── MODULE CARDS ──────────────────────────── */
+  .module-card { background: var(--bg2); border: 1px solid #2a2a2a; border-radius: var(--radius); padding: 20px; cursor: pointer; transition: all 0.15s; }
+  .module-card:hover { border-color: var(--gold); background: rgba(201,168,76,0.04); }
+  .module-icon { font-size: 24px; margin-bottom: 12px; }
+  .module-name { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+  .module-desc { font-size: 12px; color: var(--text3); }
+
+  /* ── TECHNIQUE LIST ────────────────────────── */
+  .technique-item { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid #222; font-size: 14px; }
+  .technique-item:last-child { border-bottom: none; }
+  .technique-bullet { width: 6px; height: 6px; border-radius: 50%; background: var(--gold); flex-shrink: 0; margin-top: 5px; }
+
+  /* ── KIBON ─────────────────────────────────── */
+  .kibon-card { background: var(--bg3); border: 1px solid #333; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+  .kibon-num { width: 28px; height: 28px; border-radius: 50%; background: rgba(201,168,76,0.15); color: var(--gold); font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .kibon-sequence { font-size: 13px; color: var(--text); line-height: 1.6; }
+
+  /* ── NOTE BADGE ────────────────────────────── */
+  .note-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(201,168,76,0.1); border: 1px solid rgba(201,168,76,0.2); color: var(--gold); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+
+  /* ── POOMSAE CARD ──────────────────────────── */
+  .poomsae-card { background: var(--bg3); border: 1px solid #333; border-radius: 8px; padding: 20px; }
+  .poomsae-name { font-family: 'Playfair Display', serif; font-size: 22px; color: var(--gold); margin-bottom: 4px; }
+  .criteria-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #2a2a2a; font-size: 13px; }
+  .criteria-row:last-child { border-bottom: none; }
+  .criteria-score { color: var(--gold); font-weight: 500; }
+
+  /* ── DAN CARDS ─────────────────────────────── */
+  .dan-card { background: var(--bg2); border: 1px solid #2a2a2a; border-radius: var(--radius); padding: 20px; cursor: pointer; transition: all 0.15s; }
+  .dan-card:hover { border-color: var(--gold); }
+  .dan-card.construction { opacity: 0.5; cursor: default; }
+  .dan-card:hover.construction { border-color: #2a2a2a; }
+  .dan-badge { font-family: 'Playfair Display', serif; font-size: 36px; color: var(--gold); line-height: 1; margin-bottom: 8px; }
+  .dan-title { font-size: 15px; color: var(--text); font-weight: 500; margin-bottom: 4px; }
+  .dan-modules { font-size: 12px; color: var(--text3); }
+  .construction-tag { display: inline-block; background: rgba(102,102,102,0.2); color: #888; font-size: 10px; padding: 3px 8px; border-radius: 4px; margin-top: 8px; text-transform: uppercase; letter-spacing: 0.08em; }
+
+  /* ── EXAM ──────────────────────────────────── */
+  .exam-step { display: none; }
+  .exam-step.active { display: block; }
+  .big-choice { display: flex; gap: 16px; margin-bottom: 24px; }
+  .big-btn { flex: 1; padding: 28px 20px; background: var(--bg2); border: 1px solid #2a2a2a; border-radius: var(--radius); cursor: pointer; transition: all 0.2s; text-align: center; }
+  .big-btn:hover { border-color: var(--gold); background: rgba(201,168,76,0.04); }
+  .big-btn.selected { border-color: var(--gold); background: rgba(201,168,76,0.08); }
+  .big-btn-icon { font-size: 32px; margin-bottom: 10px; }
+  .big-btn-label { font-size: 18px; font-family: 'Playfair Display', serif; color: var(--text); margin-bottom: 4px; }
+  .big-btn-sub { font-size: 12px; color: var(--text3); }
+  .grade-select-grid { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 10px; margin-bottom: 24px; }
+  .grade-select-btn { padding: 12px 6px; background: var(--bg2); border: 1px solid #2a2a2a; border-radius: 8px; cursor: pointer; text-align: center; font-size: 12px; color: var(--text2); transition: all 0.15s; }
+  .grade-select-btn:hover { border-color: var(--gold); color: var(--gold); }
+  .grade-select-btn.selected { border-color: var(--gold); background: rgba(201,168,76,0.1); color: var(--gold); }
+  .exam-generate-btn { width: 100%; padding: 16px; background: rgba(201,168,76,0.12); border: 1px solid rgba(201,168,76,0.3); border-radius: var(--radius); color: var(--gold); font-size: 16px; font-family: 'Playfair Display', serif; cursor: pointer; transition: all 0.2s; letter-spacing: 0.04em; }
+  .exam-generate-btn:hover { background: rgba(201,168,76,0.2); border-color: var(--gold); }
+
+  /* ── QCM ───────────────────────────────────── */
+  .qcm-question { background: var(--bg2); border: 1px solid #2a2a2a; border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+  .qcm-q { font-size: 15px; color: var(--text); margin-bottom: 16px; line-height: 1.5; }
+  .qcm-q .qnum { color: var(--gold); font-weight: 600; margin-right: 6px; }
+  .qcm-options { display: flex; flex-direction: column; gap: 8px; }
+  .qcm-option { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--bg3); border: 1px solid #333; border-radius: 7px; cursor: pointer; font-size: 13px; color: var(--text2); transition: all 0.15s; }
+  .qcm-option:hover { border-color: #555; color: var(--text); }
+  .qcm-option.correct { border-color: var(--green); background: rgba(76,175,122,0.1); color: var(--green); }
+  .qcm-option.wrong { border-color: var(--red); background: rgba(201,76,76,0.1); color: var(--red); }
+  .opt-letter { width: 22px; height: 22px; border-radius: 50%; border: 1px solid #555; display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0; font-weight: 500; }
+  .score-bar { height: 6px; background: #2a2a2a; border-radius: 3px; overflow: hidden; margin: 8px 0; }
+  .score-fill { height: 100%; background: var(--gold); border-radius: 3px; transition: width 0.5s; }
+
+  /* ── DICTIONNAIRE ──────────────────────────── */
+  .dict-search-wrap { position: relative; margin-bottom: 24px; }
+  .dict-search { width: 100%; padding: 12px 16px 12px 44px; background: var(--bg2); border: 1px solid #2a2a2a; border-radius: var(--radius); color: var(--text); font-size: 14px; font-family: 'DM Sans', sans-serif; transition: border-color 0.15s; }
+  .dict-search:focus { outline: none; border-color: var(--gold); }
+  .dict-search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text3); font-size: 16px; }
+  .dict-filters { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+  .filter-chip { padding: 5px 14px; border-radius: 20px; background: var(--bg2); border: 1px solid #2a2a2a; font-size: 12px; color: var(--text2); cursor: pointer; transition: all 0.15s; }
+  .filter-chip:hover { border-color: #444; color: var(--text); }
+  .filter-chip.active { background: rgba(201,168,76,0.12); border-color: rgba(201,168,76,0.3); color: var(--gold); }
+  .dict-entry { display: flex; align-items: flex-start; gap: 16px; padding: 14px 0; border-bottom: 1px solid #1e1e1e; }
+  .dict-hangul { font-size: 24px; color: var(--gold); min-width: 56px; text-align: center; line-height: 1.2; }
+  .dict-ko-roman { font-size: 12px; color: var(--text3); text-align: center; }
+  .dict-fr { font-size: 15px; color: var(--text); font-weight: 500; margin-bottom: 3px; }
+  .dict-ctx-chip { display: inline-block; background: var(--bg3); border: 1px solid #333; color: var(--text3); font-size: 10px; padding: 2px 7px; border-radius: 4px; margin-right: 4px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .dict-grade-chip { display: inline-block; background: rgba(201,168,76,0.08); color: var(--gold); font-size: 10px; padding: 2px 7px; border-radius: 4px; letter-spacing: 0.06em; }
+
+  /* ── MISC ──────────────────────────────────── */
+  .construction-view { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 40px; text-align: center; }
+  .construction-icon { font-size: 64px; margin-bottom: 24px; opacity: 0.4; }
+  .construction-title { font-family: 'Playfair Display', serif; font-size: 24px; color: var(--text3); margin-bottom: 8px; }
+  .construction-sub { font-size: 14px; color: var(--text3); opacity: 0.7; }
+  .back-btn { display: inline-flex; align-items: center; gap: 8px; color: var(--text3); font-size: 13px; cursor: pointer; padding: 6px 0; margin-bottom: 20px; transition: color 0.15s; background: none; border: none; }
+  .back-btn:hover { color: var(--gold); }
+  .divider { height: 1px; background: #222; margin: 24px 0; }
+  .tag { display: inline-block; background: var(--bg3); border: 1px solid #333; color: var(--text3); font-size: 11px; padding: 3px 8px; border-radius: 4px; margin: 2px; }
+  .tag.gold { background: rgba(201,168,76,0.1); border-color: rgba(201,168,76,0.2); color: var(--gold); }
+  #module-detail { display: none; }
+  #module-detail.active { display: block; }
+
+  /* ═══════════════════════════════════════════
+     RESPONSIVE BREAKPOINTS
+  ═══════════════════════════════════════════ */
+
+  /* ── TABLET (≤900px) ────────────────────── */
+  @media (max-width: 900px) {
+    :root { --sidebar: 180px; --header-pad: 20px 20px 16px; --content-pad: 20px 20px; }
+    .page-title { font-size: 22px; }
+    .grid-3 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .grid-4 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .dan-badge { font-size: 28px; }
+  }
+
+  /* ── MOBILE (≤640px) ────────────────────── */
+  @media (max-width: 640px) {
+    :root {
+      --sidebar: 0px;
+      --header-pad: 16px 16px 14px;
+      --content-pad: 16px 16px;
+    }
+
+    body { overflow: hidden; }
+
+    /* Hide desktop sidebar */
+    .sidebar { display: none; }
+
+    /* Show bottom nav */
+    .bottom-nav { display: flex; }
+
+    /* Main gets full width + bottom padding for nav bar */
+    .main {
+      width: 100%;
+      height: 100vh;
+      padding-bottom: var(--bottom-nav);
+    }
+
+    .page-header { padding: 14px 16px 12px; }
+    .page-title { font-size: 20px; }
+    .page-subtitle { font-size: 12px; }
+    .content { padding: 16px 16px 80px; }
+
+    /* Grids collapse to 1 column */
+    .grid-2 { grid-template-columns: 1fr; }
+    .grid-3 { grid-template-columns: 1fr; }
+    .grid-4 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+
+    /* Grade grid 2 cols on mobile */
+    #grades-adulte .grid-3,
+    #grades-adulte > .grid-3 { grid-template-columns: 1fr; }
+
+    /* Grade select grid: 3 cols on mobile */
+    .grade-select-grid { grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; }
+
+    /* Big choice stacked */
+    .big-choice { flex-direction: column; gap: 10px; }
+    .big-btn { padding: 20px 16px; }
+    .big-btn-icon { font-size: 28px; margin-bottom: 6px; }
+    .big-btn-label { font-size: 16px; }
+
+    /* Age tabs scroll on mobile */
+    .age-tabs { flex-wrap: nowrap; overflow-x: auto; gap: 6px; }
+    .age-tab { white-space: nowrap; font-size: 12px; padding: 8px 12px; min-width: auto; }
+
+    /* QCM smaller */
+    .qcm-question { padding: 14px; }
+    .qcm-q { font-size: 14px; }
+    .qcm-option { font-size: 12px; padding: 9px 12px; }
+
+    /* Dan cards smaller font */
+    .dan-badge { font-size: 26px; }
+    .dan-title { font-size: 14px; }
+
+    /* Dict entry compact */
+    .dict-hangul { font-size: 20px; min-width: 48px; }
+    .dict-fr { font-size: 14px; }
+
+    /* Scroll-to-top above bottom nav */
+    #scroll-top-btn { bottom: calc(var(--bottom-nav) + 12px); right: 14px; }
+
+    /* Exam module header title smaller */
+    .exam-generate-btn { font-size: 14px; padding: 14px; }
+
+    /* Cards full padding reduction */
+    .card { padding: 14px; }
+    .dan-card { padding: 14px; }
+    .module-card { padding: 14px; }
+  }
+
+  /* ── VERY SMALL (≤380px) ────────────────── */
+  @media (max-width: 380px) {
+    .grade-select-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .grid-4 { grid-template-columns: 1fr; }
+    .page-title { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SCROLL TO TOP -->
+<button id="scroll-top-btn" onclick="scrollToTop()" title="Retour en haut">↑</button>
+
+<div class="app-shell">
+
+<!-- SIDEBAR (desktop) -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <div class="app-name">TKD Grade</div>
+    <div class="app-sub">Passages de grade</div>
+  </div>
+  <div class="nav-items">
+    <div class="nav-item active" onclick="showView('keup', this)">
+      <span class="nav-icon">🥋</span> Keup
+    </div>
+    <div class="nav-item" onclick="showView('dan', this)">
+      <span class="nav-icon">⬛</span> Dan
+    </div>
+    <div class="nav-item" onclick="showView('examen', this)">
+      <span class="nav-icon">📝</span> Examen blanc
+    </div>
+    <div class="nav-item" onclick="showView('dictionnaire', this)">
+      <span class="nav-icon">📖</span> Dictionnaire
+    </div>
+  </div>
+  <div class="sidebar-footer">
+    Données officielles
+    <div><span class="fftda-badge">CSDGE FFTDA</span></div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="main" id="main-scroll">
+
+<!-- ======================== VIEW: KEUP ======================== -->
+<section id="view-keup" class="view active">
+  <!-- Sélecteur catégorie d'âge -->
+  <div id="keup-home">
+    <div class="page-header">
+      <div class="page-title">Keup — <span>Ceintures de couleur</span></div>
+      <div class="page-subtitle">Programmes officiels FFTDA par tranche d'âge et par grade</div>
+    </div>
+    <div class="content">
+      <div class="age-tabs">
+        <div class="age-tab active" onclick="selectAge('adulte', this)">Adulte (17 ans +)</div>
+        <div class="age-tab" onclick="selectAge('ado', this)">14–16 ans</div>
+        <div class="age-tab" onclick="selectAge('enfant', this)">Enfant (-12 ans)</div>
+      </div>
+
+      <!-- ADULTE GRADES -->
+      <div id="grades-adulte">
+        <div class="section-title">Ceinture Blanche</div>
+        <div class="grid-3" style="margin-bottom:24px;">
+          <div class="grade-card blanche" onclick="showGrade('10e','Blanche','10ème Keup')">
+            <div class="grade-num">10ème Keup → 9ème</div>
+            <div class="grade-name">Ceinture Blanche</div>
+            <div class="grade-poomsae">Poomsae : IL JONG</div>
+          </div>
+        </div>
+
+        <div class="section-title">Ceinture Jaune</div>
+        <div class="grid-3" style="margin-bottom:24px;">
+          <div class="grade-card jaune" onclick="showGrade('9e','Jaune','9ème Keup')">
+            <div class="grade-num">9ème Keup → 8ème</div>
+            <div class="grade-name">Ceinture Jaune</div>
+            <div class="grade-poomsae">Poomsae : IL JONG</div>
+          </div>
+          <div class="grade-card jaune" onclick="showGrade('8e','Jaune','8ème Keup')">
+            <div class="grade-num">8ème Keup → 7ème</div>
+            <div class="grade-name">Jaune barrette bleue</div>
+            <div class="grade-poomsae">Poomsae : YI JONG</div>
+          </div>
+          <div class="grade-card jaune" onclick="showGrade('7e','Jaune','7ème Keup')">
+            <div class="grade-num">7ème Keup → 6ème</div>
+            <div class="grade-name">Jaune db. barrettes bleues</div>
+            <div class="grade-poomsae">Poomsae : SAM JONG</div>
+          </div>
+        </div>
+
+        <div class="section-title">Ceinture Bleue</div>
+        <div class="grid-3" style="margin-bottom:24px;">
+          <div class="grade-card bleue" onclick="showGrade('6e','Bleue','6ème Keup')">
+            <div class="grade-num">6ème Keup → 5ème</div>
+            <div class="grade-name">Ceinture Bleue</div>
+            <div class="grade-poomsae">Poomsae : SA JONG</div>
+          </div>
+          <div class="grade-card bleue" onclick="showGrade('5e','Bleue','5ème Keup')">
+            <div class="grade-num">5ème Keup → 4ème</div>
+            <div class="grade-name">Bleue barrette rouge</div>
+            <div class="grade-poomsae">Poomsae : OH JONG</div>
+          </div>
+          <div class="grade-card bleue" onclick="showGrade('4e','Bleue','4ème Keup')">
+            <div class="grade-num">4ème Keup → 3ème</div>
+            <div class="grade-name">Bleue db. barrettes rouges</div>
+            <div class="grade-poomsae">Poomsae : YUK JONG</div>
+          </div>
+        </div>
+
+        <div class="section-title">Ceinture Rouge</div>
+        <div class="grid-3" style="margin-bottom:24px;">
+          <div class="grade-card rouge" onclick="showGrade('3e','Rouge','3ème Keup')">
+            <div class="grade-num">3ème Keup → 2ème</div>
+            <div class="grade-name">Ceinture Rouge</div>
+            <div class="grade-poomsae">Poomsae : TCHIL JONG</div>
+          </div>
+          <div class="grade-card rouge" onclick="showGrade('2e','Rouge','2ème Keup')">
+            <div class="grade-num">2ème Keup → 1er</div>
+            <div class="grade-name">Rouge barrette noire</div>
+            <div class="grade-poomsae">Poomsae : PAL JONG</div>
+          </div>
+          <div class="grade-card rouge" onclick="showGrade('1er','Rouge','1er Keup')">
+            <div class="grade-num">1er Keup → 1er Dan</div>
+            <div class="grade-name">Rouge db. barrettes noires</div>
+            <div class="grade-poomsae">Accès au 1er Dan</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ADO / ENFANT placeholders -->
+      <div id="grades-ado" style="display:none;">
+        <div class="construction-view">
+          <div class="construction-icon">🥋</div>
+          <div class="construction-title">Programme 14–16 ans</div>
+          <div class="construction-sub">Contenu spécifique en cours d'intégration.</div>
+        </div>
+      </div>
+      <div id="grades-enfant" style="display:none;">
+        <div class="construction-view">
+          <div class="construction-icon">⭐</div>
+          <div class="construction-title">Programme Enfants (-12 ans)</div>
+          <div class="construction-sub">Grades 1er à 15ème Keup — contenu en cours d'intégration.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GRADE DETAIL -->
+  <div id="keup-detail" style="display:none;">
+    <div class="page-header">
+      <div class="breadcrumb">
+        <span onclick="backToKeupHome()" style="cursor:pointer;">Keup</span>
+        <span class="sep">›</span>
+        <span class="cur" id="detail-title-bc">9ème Keup</span>
+      </div>
+      <div class="page-title"><span id="detail-title">9ème Keup</span></div>
+    </div>
+    <div class="content">
+      <button class="back-btn" onclick="backToKeupHome()">← Retour aux grades</button>
+      <div id="grade-content"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================== VIEW: DAN ======================== -->
+<section id="view-dan" class="view">
+  <div id="dan-home">
+    <div class="page-header">
+      <div class="page-title">Dan — <span>Ceintures Noires</span></div>
+      <div class="page-subtitle">Modules A, B et C — Programme officiel CSDGE FFTDA</div>
+    </div>
+    <div class="content">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;">
+        <div class="dan-card" onclick="showDan(1)">
+          <div class="dan-badge">1°</div>
+          <div class="dan-title">1er Dan</div>
+          <div class="dan-modules">Modules A · B · C</div>
+          <div style="margin-top:12px;">
+            <span class="tag gold">Poomsae Pal Jang</span>
+            <span class="tag gold">Kibon 8×3</span>
+          </div>
+        </div>
+        <div class="dan-card" onclick="showDan(2)">
+          <div class="dan-badge">2°</div>
+          <div class="dan-title">2ème Dan</div>
+          <div class="dan-modules">Modules A · B · C</div>
+          <div style="margin-top:12px;">
+            <span class="tag gold">Koryo imposé</span>
+            <span class="tag gold">Filière arbitrage</span>
+          </div>
+        </div>
+        <div class="dan-card" onclick="showDan(3)">
+          <div class="dan-badge">3°</div>
+          <div class="dan-title">3ème Dan</div>
+          <div class="dan-modules">Modules A · B · C</div>
+          <div style="margin-top:12px;">
+            <span class="tag gold">Koryo + Keumgan</span>
+            <span class="tag gold">Instances intern.</span>
+          </div>
+        </div>
+        <div class="dan-card" onclick="showDan(4)">
+          <div class="dan-badge">4°</div>
+          <div class="dan-title">4ème Dan</div>
+          <div class="dan-modules">Modules A · B · C</div>
+          <div style="margin-top:12px;">
+            <span class="tag gold">Taebek imposé</span>
+            <span class="tag gold">Contexte intern.</span>
+          </div>
+        </div>
+        <div class="dan-card" onclick="showDan(5)">
+          <div class="dan-badge">5°</div>
+          <div class="dan-title">5ème Dan</div>
+          <div class="dan-modules">Modules A · B · C</div>
+          <div style="margin-top:12px;">
+            <span class="tag gold">Pyonwon imposé</span>
+            <span class="tag gold">Mémoire 5e dan</span>
+          </div>
+        </div>
+        <div class="dan-card" onclick="showDan(6)">
+          <div class="dan-badge">6°</div>
+          <div class="dan-title">6ème Dan</div>
+          <div class="dan-modules">Modules A · B · C + Eung Yong Kisoul</div>
+          <div style="margin-top:12px;">
+            <span class="tag gold">Jitae imposé</span>
+            <span class="tag gold">Démonstration technique</span>
+          </div>
+        </div>
+        <div class="dan-card" onclick="showDan(7)">
+          <div class="dan-badge">7°</div>
+          <div class="dan-title">7ème Dan</div>
+          <div class="dan-modules">Modules A · B · C + Eung Yong Kisoul</div>
+          <div style="margin-top:12px;">
+            <span class="tag gold">Chunkwon imposé</span>
+            <span class="tag gold">Mémoire 6e dan</span>
+          </div>
+        </div>
+        <div class="dan-card" onclick="showDan(8)">
+          <div class="dan-badge">8°</div>
+          <div class="dan-title">8ème Dan</div>
+          <div class="dan-modules">Modules A · B · C + Eung Yong Kisoul</div>
+          <div style="margin-top:12px;">
+            <span class="tag gold">Hansoo imposé</span>
+            <span class="tag gold">Autorisation CSDGE</span>
+          </div>
+        </div>
+        <div class="dan-card" onclick="showDan(9)">
+          <div class="dan-badge">9°</div>
+          <div class="dan-title">9ème Dan</div>
+          <div class="dan-modules">Modules A · B · C + Eung Yong Kisoul</div>
+          <div style="margin-top:12px;">
+            <span class="tag gold">Ilyo imposé</span>
+            <span class="tag gold">Autorisation CSDGE</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DAN DETAIL -->
+  <div id="dan-detail" style="display:none;">
+    <div class="page-header">
+      <div class="breadcrumb">
+        <span onclick="backToDanHome()" style="cursor:pointer;">Dan</span>
+        <span class="sep">›</span>
+        <span class="cur" id="dan-detail-bc">1er Dan</span>
+      </div>
+      <div class="page-title"><span id="dan-detail-title">1er Dan</span></div>
+    </div>
+    <div class="content">
+      <button class="back-btn" onclick="backToDanHome()">← Retour aux Dan</button>
+      <div id="dan-content"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================== VIEW: EXAMEN ======================== -->
+<section id="view-examen" class="view">
+  <div class="page-header">
+    <div class="page-title">Examen <span>Blanc</span></div>
+    <div class="page-subtitle">Génération dynamique d'examens officiels FFTDA</div>
+  </div>
+  <div class="content">
+
+    <!-- STEP 1 -->
+    <div class="exam-step active" id="exam-step1">
+      <div class="section-title">Étape 1 — Catégorie</div>
+      <div class="big-choice">
+        <div class="big-btn" id="btn-keup" onclick="selectExamCat('keup')">
+          <div class="big-btn-icon">🥋</div>
+          <div class="big-btn-label">Keup</div>
+          <div class="big-btn-sub">Ceintures de couleur</div>
+        </div>
+        <div class="big-btn" id="btn-dan" onclick="selectExamCat('dan')">
+          <div class="big-btn-icon">⬛</div>
+          <div class="big-btn-label">Dan</div>
+          <div class="big-btn-sub">Ceintures noires</div>
+        </div>
+      </div>
+
+      <!-- KEUP GRADE SELECTOR -->
+      <div id="keup-grade-selector" style="display:none;">
+        <div class="section-title">Étape 2 — Grade</div>
+        <div class="age-tabs" style="margin-bottom:16px;">
+          <div class="age-tab active" onclick="this.parentNode.querySelectorAll('.age-tab').forEach(x=>x.classList.remove('active')); this.classList.add('active');">Adulte</div>
+          <div class="age-tab" onclick="this.parentNode.querySelectorAll('.age-tab').forEach(x=>x.classList.remove('active')); this.classList.add('active');">14–16 ans</div>
+        </div>
+        <div class="grade-select-grid">
+          <div class="grade-select-btn" onclick="selectExamGrade('10ème Keup',this)">10e Keup<br><span style="color:#555;font-size:10px;">Blanche</span></div>
+          <div class="grade-select-btn" onclick="selectExamGrade('9ème Keup',this)">9e Keup<br><span style="color:#f0c842;font-size:10px;">Jaune</span></div>
+          <div class="grade-select-btn" onclick="selectExamGrade('8ème Keup',this)">8e Keup<br><span style="color:#f0c842;font-size:10px;">Jaune</span></div>
+          <div class="grade-select-btn" onclick="selectExamGrade('7ème Keup',this)">7e Keup<br><span style="color:#f0c842;font-size:10px;">Jaune</span></div>
+          <div class="grade-select-btn" onclick="selectExamGrade('6ème Keup',this)">6e Keup<br><span style="color:#4c7fc9;font-size:10px;">Bleue</span></div>
+          <div class="grade-select-btn" onclick="selectExamGrade('5ème Keup',this)">5e Keup<br><span style="color:#4c7fc9;font-size:10px;">Bleue</span></div>
+          <div class="grade-select-btn" onclick="selectExamGrade('4ème Keup',this)">4e Keup<br><span style="color:#4c7fc9;font-size:10px;">Bleue</span></div>
+          <div class="grade-select-btn" onclick="selectExamGrade('3ème Keup',this)">3e Keup<br><span style="color:#c94c4c;font-size:10px;">Rouge</span></div>
+          <div class="grade-select-btn" onclick="selectExamGrade('2ème Keup',this)">2e Keup<br><span style="color:#c94c4c;font-size:10px;">Rouge</span></div>
+          <div class="grade-select-btn" onclick="selectExamGrade('1er Keup',this)">1er Keup<br><span style="color:#c94c4c;font-size:10px;">Rouge</span></div>
+        </div>
+      </div>
+
+      <!-- DAN GRADE SELECTOR -->
+      <div id="dan-grade-selector" style="display:none;">
+        <div class="section-title">Étape 2 — Dan</div>
+        <div class="grade-select-grid" style="grid-template-columns: repeat(4,1fr);">
+          <div class="grade-select-btn" onclick="selectExamGrade('1er Dan',this)">1er Dan</div>
+          <div class="grade-select-btn" onclick="selectExamGrade('2ème Dan',this)">2ème Dan</div>
+          <div class="grade-select-btn" onclick="selectExamGrade('3ème Dan',this)">3ème Dan</div>
+          <div class="grade-select-btn" onclick="selectExamGrade('4ème Dan',this)">4ème Dan</div>
+          <div class="grade-select-btn" onclick="selectExamGrade('5ème Dan',this)">5ème Dan</div>
+          <div class="grade-select-btn" onclick="selectExamGrade('6ème Dan',this)">6ème Dan</div>
+          <div class="grade-select-btn" onclick="selectExamGrade('7ème Dan',this)">7ème Dan</div>
+          <div class="grade-select-btn" onclick="selectExamGrade('8ème Dan',this)">8ème Dan</div>
+          <div class="grade-select-btn" onclick="selectExamGrade('9ème Dan',this)">9ème Dan</div>
+        </div>
+      </div>
+
+      <div id="exam-generate-section" style="display:none; margin-top:24px;">
+        <div class="divider"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <div>
+            <div style="font-size:13px;color:var(--text3);">Examen généré pour</div>
+            <div style="font-size:18px;font-family:'Playfair Display',serif;color:var(--gold);" id="exam-grade-display">—</div>
+          </div>
+        </div>
+        <button class="exam-generate-btn" onclick="generateExam()">⟳ Générer un nouvel examen</button>
+      </div>
+    </div>
+
+    <!-- EXAM RESULT -->
+    <div class="exam-step" id="exam-result">
+      <button class="back-btn" onclick="document.getElementById('exam-result').classList.remove('active'); document.getElementById('exam-step1').classList.add('active');">← Nouvelle configuration</button>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;flex-wrap:wrap;gap:12px;">
+        <div>
+          <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:4px;">Examen blanc officiel FFTDA</div>
+          <div style="font-family:'Playfair Display',serif;font-size:26px;" id="exam-result-title">—</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:4px;" id="exam-result-date"></div>
+        </div>
+        <button class="exam-generate-btn" style="width:auto;padding:12px 24px;font-size:14px;" onclick="regenerate()">⟳ Régénérer l'aléatoire</button>
+      </div>
+
+      <!-- MODULE A -->
+      <div class="exam-module-block" id="bloc-moduleA">
+        <div class="exam-module-header" style="background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.2);border-radius:var(--radius);padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">
+          <div style="width:36px;height:36px;border-radius:50%;background:rgba(201,168,76,0.15);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:16px;color:var(--gold);flex-shrink:0;">A</div>
+          <div><div style="font-size:15px;font-weight:500;color:var(--gold);">Module A</div><div style="font-size:12px;color:var(--text3);">Poomsé · Kibon</div></div>
+          <div style="margin-left:auto;" id="moduleA-note-badge"></div>
+        </div>
+        <div id="moduleA-poomsae"></div>
+        <div id="moduleA-kibon"></div>
+      </div>
+
+      <!-- MODULE B -->
+      <div class="exam-module-block" id="bloc-moduleB" style="margin-top:32px;">
+        <div class="exam-module-header" style="background:rgba(76,127,201,0.08);border:1px solid rgba(76,127,201,0.2);border-radius:var(--radius);padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">
+          <div style="width:36px;height:36px;border-radius:50%;background:rgba(76,127,201,0.15);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:16px;color:#7ab0e8;flex-shrink:0;">B</div>
+          <div><div style="font-size:15px;font-weight:500;color:#7ab0e8;">Module B</div><div style="font-size:12px;color:var(--text3);">Arbitrage · Théorie — 15 questions chacun</div></div>
+        </div>
+        <div id="moduleB-arbitrage"></div>
+        <div id="moduleB-theorie"></div>
+      </div>
+
+      <!-- MODULE C -->
+      <div class="exam-module-block" id="bloc-moduleC" style="margin-top:32px;">
+        <div class="exam-module-header" style="background:rgba(76,175,122,0.08);border:1px solid rgba(76,175,122,0.2);border-radius:var(--radius);padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">
+          <div style="width:36px;height:36px;border-radius:50%;background:rgba(76,175,122,0.15);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:16px;color:var(--green);flex-shrink:0;">C</div>
+          <div><div style="font-size:15px;font-weight:500;color:var(--green);">Module C</div><div style="font-size:12px;color:var(--text3);">Han Bon · Ho Shin Sul · Kyorugui</div></div>
+        </div>
+        <div id="moduleC-hanbon"></div>
+        <div id="moduleC-hss"></div>
+        <div id="moduleC-kyorugui"></div>
+      </div>
+
+      <!-- SCORE MODULE B -->
+      <div id="exam-score" style="display:none;margin-top:32px;">
+        <div class="divider"></div>
+        <div class="card" style="margin-top:16px;">
+          <div class="section-title">Résultat Module B — QCM</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+            <div>
+              <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Arbitrage</div>
+              <div style="font-family:'Playfair Display',serif;font-size:28px;color:var(--gold);" id="score-arb">—</div>
+              <div class="score-bar"><div class="score-fill" id="score-bar-arb" style="width:0%"></div></div>
+            </div>
+            <div>
+              <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Théorie</div>
+              <div style="font-family:'Playfair Display',serif;font-size:28px;color:var(--gold);" id="score-theo">—</div>
+              <div class="score-bar"><div class="score-fill" id="score-bar-theo" style="width:0%"></div></div>
+            </div>
+          </div>
+          <div style="font-size:13px;color:var(--text3);margin-top:8px;" id="score-feedback"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================== VIEW: DICTIONNAIRE ======================== -->
+<section id="view-dictionnaire" class="view">
+  <div class="page-header">
+    <div class="page-title">Dictionnaire <span>Coréen</span></div>
+    <div class="page-subtitle">Terminologie officielle du Taekwondo — Français / Coréen / Hangul</div>
+  </div>
+  <div class="content">
+    <div class="dict-search-wrap">
+      <span class="dict-search-icon">⌕</span>
+      <input type="text" class="dict-search" placeholder="Rechercher un terme coréen ou français…" id="dict-search" oninput="filterDict()">
+    </div>
+    <div class="dict-filters">
+      <div class="filter-chip active" onclick="setFilter('tous',this)">Tous</div>
+      <div class="filter-chip" onclick="setFilter('position',this)">Positions</div>
+      <div class="filter-chip" onclick="setFilter('frappe',this)">Frappes</div>
+      <div class="filter-chip" onclick="setFilter('blocage',this)">Blocages</div>
+      <div class="filter-chip" onclick="setFilter('deplacement',this)">Déplacements</div>
+      <div class="filter-chip" onclick="setFilter('poomsae',this)">Poomsae</div>
+      <div class="filter-chip" onclick="setFilter('combat',this)">Combat</div>
+    </div>
+    <div id="dict-list"></div>
+  </div>
+</section>
+
+</main>
+
+</div><!-- /.app-shell -->
+
+<!-- BOTTOM NAV (mobile) -->
+<nav class="bottom-nav" id="bottom-nav">
+  <div class="bottom-nav-item active" onclick="showView('keup', this)" data-view="keup">
+    <span class="bnav-icon">🥋</span>
+    <span>Keup</span>
+  </div>
+  <div class="bottom-nav-item" onclick="showView('dan', this)" data-view="dan">
+    <span class="bnav-icon">⬛</span>
+    <span>Dan</span>
+  </div>
+  <div class="bottom-nav-item" onclick="showView('examen', this)" data-view="examen">
+    <span class="bnav-icon">📝</span>
+    <span>Examen</span>
+  </div>
+  <div class="bottom-nav-item" onclick="showView('dictionnaire', this)" data-view="dictionnaire">
+    <span class="bnav-icon">📖</span>
+    <span>Dico</span>
+  </div>
+</nav>
+
+<script>
+const DICT_DATA = [
+  // ── BLOCAGES ──────────────────────────────────────────────────
+  {ko:'막기',roman:'Maki',fr:'Blocage / Parade',ctx:'blocage',grade:'10e'},
+  {ko:'아래막기',roman:'Are Maki',fr:'Blocage bas',ctx:'blocage',grade:'10e'},
+  {ko:'얼굴막기',roman:'Eulgoul Maki',fr:'Blocage haut (visage)',ctx:'blocage',grade:'10e'},
+  {ko:'몸통막기',roman:'Momtong Maki',fr:'Blocage moyen (bras avant)',ctx:'blocage',grade:'10e'},
+  {ko:'몸통안막기',roman:'Momtong An Maki',fr:'Blocage moyen intérieur (bras arrière)',ctx:'blocage',grade:'10e'},
+  {ko:'몸통바깥막기',roman:'Momtong Bakat Maki',fr:'Blocage moyen extérieur',ctx:'blocage',grade:'9e'},
+  {ko:'한손날막기',roman:'Han Sonnal Maki',fr:'Blocage tranchant d\'une main',ctx:'blocage',grade:'8e'},
+  {ko:'헤쳐막기',roman:'Hetcheu Maki',fr:'Blocage écarté (deux bras)',ctx:'blocage',grade:'7e'},
+  {ko:'헤쳐아래막기',roman:'Hetcho Are Maki',fr:'Blocage écarté bas',ctx:'blocage',grade:'7e'},
+  {ko:'헤쳐몸통바깥막기',roman:'Hetcho Momtong Bakat Maki',fr:'Blocage écarté moyen extérieur',ctx:'blocage',grade:'7e'},
+  {ko:'산틀막기',roman:'San Teul Maki',fr:'Blocage en montagne (double asymétrique haut)',ctx:'blocage',grade:'6e'},
+  {ko:'손날막기',roman:'Sonnal Maki',fr:'Blocage tranchant de la main',ctx:'blocage',grade:'6e'},
+  {ko:'바탕손막기',roman:'Batang Son Maki',fr:'Blocage paume de la main',ctx:'blocage',grade:'5e'},
+  {ko:'가위막기',roman:'Kawi Maki',fr:'Blocage en ciseaux (double asymétrique)',ctx:'blocage',grade:'2e'},
+  {ko:'왜산틀막기',roman:'Owe San Teul Maki',fr:'Blocage double W asymétrique',ctx:'blocage',grade:'2e'},
+  {ko:'금강막기',roman:'Keumgan Maki',fr:'Blocage diamant',ctx:'blocage',grade:'3e Dan'},
+  {ko:'안팔목몸통헤쳐막기',roman:'An Palmok Momtong Hetcheu Maki',fr:'Blocage écarté moyen avant-bras intérieur',ctx:'blocage',grade:'1er Dan'},
+  // ── FRAPPES MEMBRES SUPÉRIEURS ─────────────────────────────────
+  {ko:'지르기',roman:'Jireugui / Jileugui',fr:'Coup de poing',ctx:'frappe',grade:'10e'},
+  {ko:'몸통지르기',roman:'Momtong Jireugui',fr:'Coup de poing niveau moyen (ventre)',ctx:'frappe',grade:'10e'},
+  {ko:'얼굴지르기',roman:'Eulgoul Jireugui',fr:'Coup de poing niveau haut (visage)',ctx:'frappe',grade:'10e'},
+  {ko:'반대지르기',roman:'Bandé Jireugui',fr:'Coup de poing avant (bras avant)',ctx:'frappe',grade:'10e'},
+  {ko:'바로지르기',roman:'Baro Jireugui',fr:'Coup de poing arrière (bras arrière)',ctx:'frappe',grade:'10e'},
+  {ko:'두번지르기',roman:'Toubon Jireugui',fr:'Double coup de poing (avant + arrière)',ctx:'frappe',grade:'10e'},
+  {ko:'등주먹',roman:'Deung Joumok',fr:'Frappe dos du poing',ctx:'frappe',grade:'6e'},
+  {ko:'메주먹',roman:'Me Joumok',fr:'Frappe marteau (côté poing)',ctx:'frappe',grade:'6e'},
+  {ko:'바깥주먹',roman:'Bakat Joumok',fr:'Frappe extérieure du poing',ctx:'frappe',grade:'6e'},
+  {ko:'팔꿉치기',roman:'Palkoup Tchigui',fr:'Frappe coude',ctx:'frappe',grade:'5e'},
+  {ko:'제비품목치기',roman:'Jebipoum Mok Tchigui',fr:'Frappe gorge bec de grue',ctx:'frappe',grade:'1er Dan'},
+  {ko:'편손끝',roman:'Pyon Sonn Keut',fr:'Frappe pointe des doigts',ctx:'frappe',grade:'2ème Dan'},
+  {ko:'무릎치기',roman:'Mouroup Tchigui',fr:'Frappe genou',ctx:'frappe',grade:'1er Dan'},
+  // ── COUPS DE PIEDS ─────────────────────────────────────────────
+  {ko:'차기',roman:'Tchagui',fr:'Coup de pied',ctx:'frappe',grade:'10e'},
+  {ko:'앞차기',roman:'Ap Tchagui',fr:'Coup de pied de face',ctx:'frappe',grade:'10e'},
+  {ko:'반달차기',roman:'Bandal Tchagui',fr:'Coup de pied semi-circulaire',ctx:'frappe',grade:'10e'},
+  {ko:'밀어차기',roman:'Mireu Tchagui',fr:'Coup de pied poussé de face',ctx:'frappe',grade:'10e'},
+  {ko:'안차기',roman:'An Tchagui',fr:'Coup de pied balancé ext→int',ctx:'frappe',grade:'10e'},
+  {ko:'바깥차기',roman:'Bakat Tchagui',fr:'Coup de pied balancé int→ext',ctx:'frappe',grade:'10e'},
+  {ko:'돌려차기',roman:'Dolyeu / Tolyo Tchagui',fr:'Coup de pied circulaire',ctx:'frappe',grade:'6e'},
+  {ko:'옆차기',roman:'Yop Tchagui',fr:'Coup de pied latéral',ctx:'frappe',grade:'6e'},
+  {ko:'내려차기',roman:'Nelyo Tchagui',fr:'Coup de pied descendant',ctx:'frappe',grade:'6e'},
+  {ko:'뒤차기',roman:'Dwitt Tchagui',fr:'Coup de pied arrière',ctx:'frappe',grade:'6e'},
+  {ko:'뒤돌려차기',roman:'Tuit / Fouryeu Tchagui',fr:'Coup de pied retourné',ctx:'frappe',grade:'7e'},
+  {ko:'소콧차기',roman:'Sokkot Tchagui',fr:'Coup de pied pénétrant (pointe du pied)',ctx:'frappe',grade:'1er Dan'},
+  {ko:'겹차기',roman:'Keudeup Tchagui',fr:'Enchaîné sans reposer le pied',ctx:'frappe',grade:'3e'},
+  {ko:'높이차기',roman:'Yoh Sok Oh Tchagui / Y Ho Sok Oh',fr:'Coup de pied en hauteur (chandelle)',ctx:'frappe',grade:'3ème Dan'},
+  {ko:'두발당상앞차기',roman:'Dou Bal Dang Sang Ap Tchagui',fr:'Coup de pied sauté de face (ciseau)',ctx:'frappe',grade:'1er Dan'},
+  // ── POSITIONS ──────────────────────────────────────────────────
+  {ko:'서기',roman:'Seugui',fr:'Position / Garde',ctx:'position',grade:'10e'},
+  {ko:'앞서기',roman:'Ap Seugui',fr:'Position de marche (avant)',ctx:'position',grade:'10e'},
+  {ko:'앞굽이',roman:'Ap Koubi Seugui',fr:'Avant basse (jambe avant fléchie)',ctx:'position',grade:'10e'},
+  {ko:'주춤서기',roman:'Joutchoum Seugui',fr:'Position du cavalier (écartée)',ctx:'position',grade:'10e'},
+  {ko:'나란히서기',roman:'Narhani Seugui',fr:'Position parallèle (attente)',ctx:'position',grade:'10e'},
+  {ko:'차렷서기',roman:'Tchaliot Seugui',fr:'Position de salut / garde-à-vous',ctx:'position',grade:'10e'},
+  {ko:'뒷굽이',roman:'Dwitt Koubi Seugui',fr:'Arrière basse (poids sur jambe arrière)',ctx:'position',grade:'7e'},
+  {ko:'범서기',roman:'Beum Seugui',fr:'Position du tigre (poids arrière + pied avant soulevé)',ctx:'position',grade:'3e'},
+  {ko:'뒷꼬아서기',roman:'Dwitt Koa Seugui',fr:'Position croisée arrière',ctx:'position',grade:'5e'},
+  {ko:'학다리서기',roman:'Hakdari Seugui',fr:'Position de la grue (sur une jambe)',ctx:'position',grade:'2ème Dan'},
+  {ko:'모아서기',roman:'Moa Seugui',fr:'Position pieds joints',ctx:'position',grade:'4ème Dan'},
+  // ── DÉPLACEMENTS ───────────────────────────────────────────────
+  {ko:'앞',roman:'Ap',fr:'Avant / De face',ctx:'deplacement',grade:'10e'},
+  {ko:'뒤',roman:'Dwitt',fr:'Arrière / Derrière',ctx:'deplacement',grade:'10e'},
+  {ko:'옆',roman:'Yop',fr:'Côté / Latéral',ctx:'deplacement',grade:'10e'},
+  {ko:'내려',roman:'Nelyo',fr:'Descendant',ctx:'deplacement',grade:'10e'},
+  {ko:'올려',roman:'Olio / Wi',fr:'Ascendant',ctx:'deplacement',grade:'10e'},
+  // ── TERMES DE COMBAT ───────────────────────────────────────────
+  {ko:'겨루기',roman:'Kyorugui',fr:'Combat / Sparring',ctx:'combat',grade:'10e'},
+  {ko:'한번겨루기',roman:'Han Bon Kyeurogui',fr:'Combat en un pas (attaque prédéfinie)',ctx:'combat',grade:'9e'},
+  {ko:'호신술',roman:'Ho Shin Sul',fr:'Techniques de self-défense',ctx:'combat',grade:'10e'},
+  {ko:'차렷',roman:'Tchaliot',fr:'Garde-à-vous',ctx:'combat',grade:'10e'},
+  {ko:'경례',roman:'Kyongrye',fr:'Salut',ctx:'combat',grade:'10e'},
+  {ko:'준비',roman:'Tchoumbi',fr:'Prêt / En garde',ctx:'combat',grade:'10e'},
+  {ko:'시작',roman:'Sidjak',fr:'Commencez !',ctx:'combat',grade:'10e'},
+  {ko:'갈려',roman:'Kallyeo',fr:'Stop ! Séparez-vous',ctx:'combat',grade:'10e'},
+  {ko:'계속',roman:'Keisouk',fr:'Continuez',ctx:'combat',grade:'10e'},
+  {ko:'끝',roman:'Keut',fr:'Fin',ctx:'combat',grade:'10e'},
+  {ko:'감점',roman:'Gam-jeom',fr:'Pénalité (−1 pt pour l\'adversaire)',ctx:'combat',grade:'6e'},
+  {ko:'경고',roman:'Kyong-go',fr:'Avertissement (demi-pénalité)',ctx:'combat',grade:'6e'},
+  // ── POOMSAE ────────────────────────────────────────────────────
+  {ko:'품새',roman:'Poomsae',fr:'Forme — enchaînement codifié de techniques',ctx:'poomsae',grade:'10e'},
+  {ko:'일장',roman:'Il Jang',fr:'1ère forme Taegueug',ctx:'poomsae',grade:'10e'},
+  {ko:'이장',roman:'Yi Jang',fr:'2ème forme Taegueug',ctx:'poomsae',grade:'8e'},
+  {ko:'삼장',roman:'Sam Jang',fr:'3ème forme Taegueug',ctx:'poomsae',grade:'7e'},
+  {ko:'사장',roman:'Sa Jang',fr:'4ème forme Taegueug',ctx:'poomsae',grade:'6e'},
+  {ko:'오장',roman:'Oh Jang',fr:'5ème forme Taegueug',ctx:'poomsae',grade:'5e'},
+  {ko:'육장',roman:'Yuk Jang',fr:'6ème forme Taegueug',ctx:'poomsae',grade:'4e'},
+  {ko:'칠장',roman:'Tchil Jang',fr:'7ème forme Taegueug',ctx:'poomsae',grade:'3e'},
+  {ko:'팔장',roman:'Pal Jang',fr:'8ème forme Taegueug',ctx:'poomsae',grade:'2e'},
+  {ko:'고려',roman:'Koryo',fr:'Poomsae Dan — La montagne (Corée)',ctx:'poomsae',grade:'1er Dan'},
+  {ko:'금강',roman:'Keumgan',fr:'Poomsae Dan — Le diamant (indestructible)',ctx:'poomsae',grade:'2ème Dan'},
+  {ko:'태백',roman:'Taebek',fr:'Poomsae Dan — La montagne sacrée Baekdu',ctx:'poomsae',grade:'4ème Dan'},
+  {ko:'평원',roman:'Pyonwon',fr:'Poomsae Dan — La plaine (étendue et flexibilité)',ctx:'poomsae',grade:'5ème Dan'},
+  {ko:'십진',roman:'Sipjin',fr:'Poomsae Dan — Le nombre 10 (progression infinie)',ctx:'poomsae',grade:'6ème Dan'},
+  {ko:'지태',roman:'Jitae',fr:'Poomsae Dan — La Terre (origine de la vie)',ctx:'poomsae',grade:'6ème Dan'},
+  {ko:'천권',roman:'Chunkwon',fr:'Poomsae Dan — Le Ciel (espace infini)',ctx:'poomsae',grade:'7ème Dan'},
+  {ko:'한수',roman:'Hansoo',fr:'Poomsae Dan — L\'Eau (fluidité et adaptation)',ctx:'poomsae',grade:'8ème Dan'},
+  {ko:'일여',roman:'Ilyo',fr:'Poomsae Dan — L\'Unité (corps et esprit)',ctx:'poomsae',grade:'9ème Dan'},
+  // ── VALEURS FONDAMENTALES ──────────────────────────────────────
+  {ko:'예의',roman:'Ye-ui',fr:'Courtoisie',ctx:'combat',grade:'10e'},
+  {ko:'염치',roman:'Yom-chi',fr:'Intégrité',ctx:'combat',grade:'10e'},
+  {ko:'인내',roman:'In-nae',fr:'Persévérance',ctx:'combat',grade:'10e'},
+  {ko:'극기',roman:'Guk-gi',fr:'Maîtrise de soi',ctx:'combat',grade:'10e'},
+  {ko:'백절불굴',roman:'Baekjool Boolgool',fr:'Esprit indomptable',ctx:'combat',grade:'10e'},
+];
+
+let currentFilter = 'tous';
+let currentExamGrade = '';
+
+function showView(name, triggerEl) {
+  // Hide all views
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+
+  // Sync sidebar nav
+  document.querySelectorAll('.sidebar .nav-item').forEach(n => n.classList.remove('active'));
+  const sidebarItem = [...document.querySelectorAll('.sidebar .nav-item')]
+    .find(el => el.getAttribute('onclick') && el.getAttribute('onclick').includes("'"+name+"'"));
+  if (sidebarItem) sidebarItem.classList.add('active');
+
+  // Sync bottom nav
+  document.querySelectorAll('.bottom-nav-item').forEach(n => n.classList.remove('active'));
+  const bnav = document.querySelector(`.bottom-nav-item[data-view="${name}"]`);
+  if (bnav) bnav.classList.add('active');
+
+  // Scroll to top on view change
+  const main = document.getElementById('main-scroll');
+  if (main) main.scrollTo({ top: 0, behavior: 'smooth' });
+
+  if (name === 'dictionnaire') renderDict();
+}
+
+// ── SCROLL TO TOP ──────────────────────────────
+function scrollToTop() {
+  const main = document.getElementById('main-scroll');
+  if (main) main.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Show/hide scroll-to-top button based on scroll position
+document.addEventListener('DOMContentLoaded', function() {
+  const main = document.getElementById('main-scroll');
+  const btn = document.getElementById('scroll-top-btn');
+  if (main && btn) {
+    main.addEventListener('scroll', function() {
+      if (main.scrollTop > 300) {
+        btn.classList.add('visible');
+      } else {
+        btn.classList.remove('visible');
+      }
+    });
+  }
+});
+
+function selectAge(age, el) {
+  document.querySelectorAll('.age-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  ['adulte','ado','enfant'].forEach(a => {
+    const el = document.getElementById('grades-'+a);
+    if(el) el.style.display = a === age ? 'block' : 'none';
+  });
+}
+
+function showGrade(key, color, title) {
+  document.getElementById('keup-home').style.display = 'none';
+  document.getElementById('keup-detail').style.display = 'block';
+  document.getElementById('detail-title').textContent = title;
+  document.getElementById('detail-title-bc').textContent = title;
+
+  const colorMap = {Blanche:'blanche',Jaune:'jaune',Bleue:'bleue',Rouge:'rouge'};
+  const cc = colorMap[color] || 'jaune';
+  const chipHtml = `<span class="belt-chip belt-${cc}"><span class="belt-dot"></span>${color}</span>`;
+
+  const gradeData = getGradeData(key);
+  document.getElementById('grade-content').innerHTML = renderGradeContent(gradeData, chipHtml, key);
+}
+
+function getGradeData(key) {
+  const ALL = {
+    '10e':{ceinture:'Ceinture blanche',kibon:{positions:['Ap Seugui','Ap Koubi Seugui','Joutchoum Seugui','Narhani Seugui (Attente)','Tchaliot Seugui (Salut)'],frappes_sup:['Momtong Jireugui (moyen)','Eulgoul Jireugui (haut)','Bande Jireugui (poing avant)','Baro Jireugui (poing arriere)','Toubon Jireugui (avant/arriere)'],frappes_inf:['Ap Tchagui (de face)','Bandal Tchagui (semi-circulaire)','Mireu Tchagui (pousse de face)','An Tchagui (balance ext/int)','Bakat Tchagui (balance int/ext)'],blocages:['Are Maki (en bas)','Eulgoul Maki (en haut)','Momtong Maki (moyen bras avant)','Momtong An Maki (moyen bras arriere)'],deplac:['Pas pivot vers l\'avant','Retrait pivot','Pas glisse vers l\'avant','Retrait glisse'],exercices:['1 enchainement MS au choix x6 fois en avancant','1 enchainement coup de pied au choix x6 fois en avancant']},note_kibon:'/20',poomsae:['IL JONG ou sequence libre'],note_poomsae:'/20 - Diagramme /10, Ligne cible /10',hanbon:['1 Hanbon au choix avec Jireugui (coup de poing)'],note_hanbon:'/15',kyeurogui:['1 round de combat','Fondamentaux Niv.1 : Je ne suis pas touche /5','Variete technique Niv.1 : Toucher avec 2 jambes /5','Variete tactique Niv.1 : Attaques 1 coup ou enchaine /5'],note_kyeurogui:'/15',hss:['1 degagement sur saisie simple au choix (A ou B)'],note_hss:'/10 - Reactivite /5, Degagement /5',theorie:['Savoir executer le salut','Savoir nouer sa ceinture','Connaitre le nom de la tenue','Connaitre l\'interet de la licence et passeport']},
+    '9e':{ceinture:'Ceinture jaune',kibon:{positions:['Ap Seugui','Ap Koubi Seugui','Joutchoum Seugui','Narhani Seugui (Attente)','Tchaliot Seugui (Salut)'],frappes_sup:['Momtong / Eulgoul Jireugui','Bande / Baro Jireugui','Toubon Jireugui'],frappes_inf:['Ap Pal Bandal Tchagui','Ap Pal Ap Tchagui','Ap Pal Yop Tchagui','Koro Bandal Tchagui'],blocages:['Momtong Bakat Maki','Eulgoul Bakat Maki'],deplac:['Pas pivot vers l\'avant','Retrait pivot','Pas glisse vers l\'avant','Retrait glisse'],exercices:['1 enchainement MS impose x6 fois en avancant','1 enchainement coup de pied impose x6 fois en avancant']},note_kibon:'/20',poomsae:['1 - Taegueug Il-Jang'],note_poomsae:'/20 - Diagramme /10, Ligne cible /5, Qualite /5',hanbon:['1 Hanbon MS au choix','1 Hanbon coup de pied au choix'],note_hanbon:'/30',kyeurogui:['1 round de combat','Fondamentaux Niv.2 : Replacement /5','Variete technique Niv.1 /5','Variete tactique Niv.1 /5'],note_kyeurogui:'/15',hss:['1 degagement sur saisie simple imposee (A ou B ou C)'],note_hss:'/10',theorie:['Connaitre les grades adultes','Compter en coreen de 1 a 10']},
+    '8e':{ceinture:'Ceinture jaune barrette bleue',kibon:{positions:['Ap Seugui','Ap Koubi Seugui','Joutchoum Seugui','Narhani Seugui (Attente)','Tchaliot Seugui (Salut)'],frappes_sup:['Momtong Jireugui','Eulgoul Jireugui','Bande Jireugui','Baro Jileugui','Toubon Jileugui'],frappes_inf:['Ap Tchagui','Bandal Tchagui','Mireu Tchagui','An Tchagui','Bakat Tchagui','Ap Bal Bandal Tchagui','Ap Bal Ap Tchagui','Ap Bal Yop Tchagui','Koro Bandal Tchagui'],blocages:['Are Maki','Eulgoul Maki','Momtong Maki','Momtong An Maki','Momtong Bakat Maki'],deplac:['Pas pivot vers l\'avant','Retrait pivot'],exercices:['Tranchant main : Han Sonnal Mok Tchigui, Han Sonnal Je Bi Poum Mok Tchigui, Han Sonnal Bakat Tchigui, Je Bi Poum Mok Tchigui','1 enchainement MS impose x6 fois aller-retour','1 enchainement coup de pied impose x6 fois + demi-tour + 6 fois']},note_kibon:'/20',poomsae:['2 - Taegueug Yi-Jang'],note_poomsae:'/20',hanbon:['Coups sautes de base : Dobal Dansong Ap Tchagui, Dobal Dansong Bandal Tchagui, Tuyo Ap Tchagui','1 Hanbon decalage au choix','1 Hanbon par pas de recul au choix'],note_hanbon:'/30',kyeurogui:['1 round de combat','Fondamentaux Niv.2 /5','Variete technique Niv.1 /5','Variete tactique Niv.1 /5'],note_kyeurogui:'/15',hss:['1 degagement sur saisie simple imposee (A ou B ou C ou D)'],note_hss:'/10',theorie:['Connaitre les regles principales pour gagner un combat','Connaitre les avertissements et fautes en combat','Connaitre le deroulement d\'une competition combat']},
+    '7e':{ceinture:'Ceinture jaune double barrettes bleues',kibon:{positions:['Positions precedentes','Dwitt Koubi Seugui'],frappes_sup:[],frappes_inf:['Tuit Tchagui (retourne)','360 Bandal Tchagui','Dwidora Yop Tchagui'],blocages:['Hetcho Are Maki','Hetcho Momtong Bakat Maki','Hetcho An Palmok Momtong Maki','Blocages doubles symetriques'],deplac:[],exercices:['1 enchainement blocage + frappe MS au choix x6 fois','1 enchainement 3 coups de pieds (dont 1 retourne) x6 fois']},note_kibon:'/20',poomsae:['3 - Taegueug Sam Jang'],note_poomsae:'/20',hanbon:['1 Hanbon decalage au choix','1 Hanbon par pas de recul au choix'],note_hanbon:'/30',kyeurogui:['1 round de combat','Fondamentaux Niv.2 /5','Variete technique Niv.1 /5','Variete tactique Niv.1 /5'],note_kyeurogui:'/15',hss:['1 degagement sur saisie simple imposee (A ou B ou C ou D)'],note_hss:'/10',theorie:['Connaitre les principaux gestes d\'arbitrage en combat']},
+    '6e':{ceinture:'Ceinture bleue',kibon:{positions:['Positions precedentes','Dwitt Koubi Seugui'],frappes_sup:['Deung Joumok','Me Joumok','Bakat Joumok'],frappes_inf:['Tolyo Tchagui (circulaire)','Yop Tchagui (lateral)','Nelyo Tchagui (descendant)','Furyeu Tchagui (circulaire revers)'],blocages:['Sonnal Momtong Bakat Maki','Sonnal Are Maki','Kodoro Bakat Maki','Kodoro Are Maki'],deplac:['Pas tournant vers l\'avant','Retrait tournant'],exercices:['2 enchainements blocage + frappe MI ou MS imposes','1 enchainement 3 coups de pieds (dont 1 retourne) impose']},note_kibon:'/30',poomsae:['4 - Taegueug Sa Jang'],note_poomsae:'/20 - Diagramme /10, Qualite+finitions MS /5, Maintien axe vertical /5',hanbon:['2 Hanbons MS differents niveaux','2 Hanbons enchainements 3 coups de pieds'],note_hanbon:'/30',kyeurogui:['2 rounds de combat','Fondamentaux Niv.3 : Riposte /10','Variete technique Niv.2 : Jambe avant /10','Variete tactique Niv.2 : Attaque et defense /10'],note_kyeurogui:'/30',hss:['1 degagement + contre sur saisie 1 poignet imposee (A ou B ou C)','1 degagement + contre sur double saisie poignets (D ou E)'],note_hss:'/30',theorie:['Connaitre les regles principales des competitions poomse']},
+    '5e':{ceinture:'Ceinture bleue barrette rouge',kibon:{positions:['Positions precedentes','Dwitt Koubi Seugui','Oren Seugui','Owen Seugui','Dwitt Koa Seugui'],frappes_sup:['Pal Koup Tolyo (coude circulaire)','Pal Koup Yop (coude lateral)','Pal Koup Olio (coude ascendant)'],frappes_inf:['Ap Pal et Koro Tolyo Tchagui','Ap Pal et Koro Furyeu Tchagui','Ap Pal et Koro Nelyo Tchagui'],blocages:['Batang Son Nelyo Maki','Batang Son Momtong Maki','Blocages paume de main'],deplac:[],exercices:['2 enchainements blocage + frappe MI ou MS imposes','1 enchainement 3 coups de pieds (dont 1 retourne) impose']},note_kibon:'/30',poomsae:['5 - Taegueug Oh Jang'],note_poomsae:'/20',hanbon:['2 Hanbons enchainement bras + jambe','2 Hanbons enchainement jambe + bras'],note_hanbon:'/30',kyeurogui:['2 rounds de combat','Fondamentaux Niv.3 : Riposte /10','Variete technique Niv.2 : Jambe avant /10','Variete tactique Niv.2 /10'],note_kyeurogui:'/30',hss:['2 degagements + contre sur saisie 1 poignet imposee (A ou B ou C ou D ou E)'],note_hss:'/30',theorie:['Connaitre le nom des champions francais','Connaitre le nom des elus/cadres de la FFTDA']},
+    '4e':{ceinture:'Ceinture bleue double barrettes rouges',kibon:{positions:['Positions precedentes'],frappes_sup:[],frappes_inf:['Momdolyo Tchagui (retourne avance)','360 Tolyo Tchagui','360 Nelyo Tchagui'],blocages:[],deplac:[],exercices:['2 frappes de precision MS au choix (G+D)','1 enchainement blocage en reculant + attaque MS en avancant avec changement de position']},note_kibon:'/30',poomsae:['6 - Taegueug Yuk Jang'],note_poomsae:'/20',hanbon:['2 Hanbons coup de pied retourne','2 Hanbons coup de pied saute'],note_hanbon:'/30',kyeurogui:['2 rounds de combat','Fondamentaux Niv.3 /10','Variete technique Niv.2 /10','Variete tactique Niv.2 /10'],note_kyeurogui:'/30',hss:['2 degagements + contre sur saisie 1 poignet imposee (A ou B ou C ou D ou E)'],note_hss:'/30',theorie:['Connaitre la filiere de formation des enseignants de la FFTDA']},
+    '3e':{ceinture:'Ceinture rouge',kibon:{positions:['Positions precedentes','Beum Seugui','Be Joumok Seugui'],frappes_sup:['Je Tcho Jireugui (poing en remontant)','Deung Joumok Je Tcho Jireugui','Do Kyang Teung Je Tcho Jireugui'],frappes_inf:['Sohko Tchagui (sans reposer)','Keudop Tchagui'],blocages:['Kodoro Batangson Momtong Maki','Eut Keuro Are Maki','Blocages doubles renforces'],deplac:['Combinaisons : Pas tournant, Glisses, Pivots'],exercices:['2 frappes de precision sur partenaire (coups de pieds + MS)','2 enchainements 3 techniques MS imposees x4 fois en avancant']},note_kibon:'/30',poomsae:['7 - Taegueug Tchil Jang'],note_poomsae:'/25 - Diagramme /10, Qualite /5, Positions /5, Variation vitesses /5',hanbon:['2 Hanbons coup de pied retourne','2 Hanbons coup de pied saute'],note_hanbon:'/30',kyeurogui:['2 rounds de combat','Fondamentaux Niv.4 : Contre — stopper l\'attaque adverse /10','Variete technique Niv.3 : Coups de pieds visage /10','Variete tactique Niv.3 : Attaque + defense variee /10'],note_kyeurogui:'/30',hss:['4 degagements + contre + mise au sol sur saisie imposee (A ou B ou C ou D ou E)'],note_hss:'/20 - Reactivite /2, Degagement /2, Riposte /8, Controle + mise au sol /8',theorie:['Connaitre le fonctionnement du haut niveau en taekwondo']},
+    '2e':{ceinture:'Ceinture rouge barrette noire',kibon:{positions:['Positions precedentes'],frappes_sup:[],frappes_inf:['Tuyo Yop Tchagui (saute lateral)','Tuyo Tolyo Tchagui (saute circulaire)','Tuyo Tuit Tchagui (saute retourne)','Tuyo Momdolyo Tchagui (saute retourne avance)'],blocages:['Kawi Maki (doubles asymetriques)','Owe San Teul Maki'],deplac:[],exercices:['2 frappes de precision sur partenaire imposees avec coups de pied','2 enchainements 3 techniques MS/MI differentes imposees x4 fois en avancant']},note_kibon:'/30',poomsae:['8 - Taegueug Pal Jang'],note_poomsae:'/25',hanbon:['1 Hanbon membres superieurs','1 Hanbon membres inferieurs','2 Hanbons coups de pieds sautes'],note_hanbon:'/30',kyeurogui:['2 rounds de combat','Fondamentaux Niv.4 : Contre /10','Variete technique Niv.3 : Pieds visage /10','Variete tactique Niv.3 /10'],note_kyeurogui:'/30',hss:['4 degagements + contre + mise au sol sur saisie imposee (A ou B ou C ou D ou E)'],note_hss:'/20',theorie:['Connaitre le fonctionnement de la FFTDA','Connaitre l\'historique de la FFTDA']},
+    '1er':{ceinture:'Ceinture rouge double barrettes noires',kibon:{positions:['Toutes les positions du programme'],frappes_sup:['Toutes les techniques MS du programme'],frappes_inf:['Toutes les techniques MI et sautes du programme'],blocages:['Tous les blocages du programme'],deplac:['Tous les deplacements du programme'],exercices:['Programme identique au 2eme Keup avec niveau d\'exigence superieur']},note_kibon:'/30',poomsae:['8 - Taegueug Pal Jang'],note_poomsae:'/25',hanbon:['1 Hanbon membres superieurs','1 Hanbon membres inferieurs','2 Hanbons coups de pieds sautes'],note_hanbon:'/30',kyeurogui:['2 rounds de combat'],note_kyeurogui:'/30',hss:['4 degagements + contre + mise au sol sur saisie imposee'],note_hss:'/20',theorie:['Connaitre le fonctionnement de la FFTDA','Connaitre l\'historique de la FFTDA']}
+  };
+  return ALL[key] || ALL['9e'];
+}
+
+function renderGradeContent(d, chipHtml, key) {
+  const kb = d.kibon;
+
+  const listBlock = (label, items) => {
+    if (!items || !items.length) return '';
+    return '<div style="margin-bottom:14px;">' +
+      '<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;font-weight:600;">' + label + '</div>' +
+      items.map(i => '<div class="technique-item"><span class="technique-bullet"></span><span style="font-size:13px;">' + i + '</span></div>').join('') +
+      '</div>';
+  };
+
+  const modCard = (icon, title, note, body) =>
+    '<div style="background:var(--bg2);border:1px solid #2a2a2a;border-radius:var(--radius);overflow:hidden;margin-bottom:14px;">' +
+    '<div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--bg3);border-bottom:1px solid #222;">' +
+    '<span style="font-size:18px;">' + icon + '</span>' +
+    '<span style="font-size:14px;font-weight:500;color:var(--text);flex:1;">' + title + '</span>' +
+    (note ? '<span class="note-badge">' + note + '</span>' : '') +
+    '</div><div style="padding:14px 16px;">' + body + '</div></div>';
+
+  const exBlock = (kb.exercices && kb.exercices.length)
+    ? '<div class="divider"></div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Exercices</div>' +
+      kb.exercices.map(e => '<div style="font-size:13px;color:var(--gold);padding:3px 0;">+  ' + e + '</div>').join('')
+    : '';
+
+  const kibonBody =
+    listBlock('Positions', kb.positions) +
+    listBlock('Frappes membres superieurs', kb.frappes_sup) +
+    listBlock('Frappes membres inferieurs', kb.frappes_inf) +
+    listBlock('Blocages', kb.blocages) +
+    listBlock('Deplacements', kb.deplac) +
+    exBlock;
+
+  const poomsaeBody = d.poomsae.map(p =>
+    '<div style="font-size:14px;color:var(--text);padding:6px 0;border-bottom:1px solid #222;">' + p + '</div>'
+  ).join('');
+
+  const listRows = arr => (arr || []).map(h =>
+    '<div class="technique-item"><span class="technique-bullet"></span><span style="font-size:13px;">' + h + '</span></div>'
+  ).join('');
+
+  return '<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">' +
+    chipHtml + '<span style="font-size:12px;color:var(--text3);">' + d.ceinture + '</span></div>' +
+    modCard('[Kibon]', 'Kibon', d.note_kibon, kibonBody) +
+    modCard('[Poomsae]', 'Poomsae', d.note_poomsae, poomsaeBody) +
+    modCard('[HBK]', 'Han Bon Kyeurogui', d.note_hanbon, listRows(d.hanbon)) +
+    modCard('[Kyorugui]', 'Kyeurogui', d.note_kyeurogui, listRows(d.kyeurogui)) +
+    modCard('[HSS]', 'Ho Shin Soul', d.note_hss, listRows(d.hss)) +
+    modCard('[Theorie]', 'Theorie', '', listRows(d.theorie));
+}
+
+function backToKeupHome() {
+  document.getElementById('keup-home').style.display = 'block';
+  document.getElementById('keup-detail').style.display = 'none';
+}
+
+function showDan(num) {
+  document.getElementById('dan-home').style.display = 'none';
+  document.getElementById('dan-detail').style.display = 'block';
+  const labels = ['','1er Dan','2ème Dan','3ème Dan','4ème Dan','5ème Dan','6ème Dan','7ème Dan','8ème Dan','9ème Dan'];
+  document.getElementById('dan-detail-title').textContent = labels[num];
+  document.getElementById('dan-detail-bc').textContent = labels[num];
+  document.getElementById('dan-content').innerHTML = renderDanContent(num);
+}
+
+function backToDanHome() {
+  document.getElementById('dan-home').style.display = 'block';
+  document.getElementById('dan-detail').style.display = 'none';
+}
+
+function renderDanContent(num) {
+  const DAN_META = {
+    1:{poomsae_imposes:['8 - Taegueug Pal Jang'],poomsae_tirage:['7 - Taegueug Tchil Jang','6 - Taegueug Yuk Jang','5 - Taegueug Oh Jang','4 - Taegueug Sa Jang','3 - Taegueug Sam Jang','2 - Taegueug Yi-Jang','1 - Taegueug Il-Jang'],theorie:['La FFTDA','La vie associative'],arbitrage:['Règles d\'arbitrage et compétition technique','Règles d\'arbitrage et compétition combat'],hss_imposes:[],hss_tirage:['Saisi du poignet direct','Saisie du poignet croisé','Saisie des deux poignets','Saisie d\'un poignet à deux mains','Saisie des deux poignets par derrière']},
+    2:{poomsae_imposes:['Poomsae Koryo'],poomsae_tirage:['1 à 8 - Taegueug (tiré au sort)'],theorie:['L\'histoire du Taekwondo','La vie associative'],arbitrage:['Règles d\'arbitrage et compétition combat et technique','La filière d\'arbitrage'],hss_imposes:['Saisie du col à une main de face (bras semi-fléchi)','Double saisie du col de face'],hss_tirage:['Saisi du poignet direct','Saisie du poignet croisé','Saisie des deux poignets','Saisie d\'un poignet à deux mains','Saisie des deux poignets par derrière']},
+    3:{poomsae_imposes:['Poomsae Koryo','Poomsae Keumgan'],poomsae_tirage:['1 à 8 - Taegueug (tiré au sort)'],theorie:['Les instances dirigeantes internationales','La vie associative'],arbitrage:['Règles d\'arbitrage et compétition combat et technique','La filière d\'arbitrage'],hss_imposes:['Bandal Tchagui au ventre','Ap Tchagui ventre suivi de coup de poing niveau visage','Saisie de col ou manche suivi d\'un crochet niveau visage'],hss_tirage:['Saisie du col à une main de face (bras semi-fléchi)','Double saisie du col de face','Saisi du poignet direct','Saisie du poignet croisé','Saisie des deux poignets','Saisie d\'un poignet à deux mains','Saisie des deux poignets par derrière']},
+    4:{poomsae_imposes:['Poomsae Taebek','1 tiré au sort : Poomsae Koryo ou Poomsae Keumgan'],poomsae_tirage:['1 à 8 - Taegueug (tiré au sort)'],theorie:['L\'évolution du Taekwondo dans le contexte international','La vie associative'],arbitrage:['Règles d\'arbitrage et compétition combat et technique','La filière d\'arbitrage'],hss_imposes:['Etranglement à deux mains de face','Ceinturage de face avec les 2 bras libres','Ceinturage de dos bras pris'],hss_tirage:['Bandal Tchagui au ventre','Ap Tchagui ventre suivi de coup de poing niveau visage','Saisie de col ou manche suivi d\'un crochet niveau visage','Saisie du col à une main de face (bras semi-fléchi)','Double saisie du col de face','Saisi du poignet direct','Saisie du poignet croisé','Saisie des deux poignets','Saisie d\'un poignet à deux mains','Saisie des deux poignets par derrière']},
+    5:{poomsae_imposes:['Poomsae Pyonwon'],poomsae_tirage:['Koryo, Keumgan ou Taebek (tiré au sort)','4 à 8 - Taegueug (tiré au sort)'],theorie:['Mémoire — thèmes annexe Examen 5e Dan','Version Kukkiwon en anglais obligatoire','La vie associative'],arbitrage:['La filière d\'arbitrage','Règles d\'arbitrage et de compétitions (combats et Poomsé)','QCM — durée max : 15 min — seuil ≥ 7,5/15 pour chaque partie'],hss_imposes:[],hss_tirage:['Dégagement sur étranglement — points vitaux','Dégagement sur ceinturage de face bras non pris — points vitaux','Saisie de la ceinture + 2 techniques du programme 1er–4e Dan']},
+    6:{poomsae_imposes:['Poomsae Jitae'],poomsae_tirage:['1 proposé + 1 tiré au sort : Sipjin, Koryo, Keumgan, Taebek, Pyonwon'],theorie:['Mémoire — thèmes annexe Examen 6e Dan','Version Kukkiwon en anglais obligatoire'],arbitrage:['Pas concerné'],hss_imposes:[],hss_tirage:['5 enchaînements libres dont 2 ripostes sur attaques au couteau'],eyk:['Démonstration technique commentée des mouvements clés du Poomsé','Exposé oral + analyse technique','Application ≥ 2 enchaînements avec partenaire(s)','Application 2 techniques en situation Ho Shin Sul'],prereq:'1er Dan au moins depuis 20 ans — Titre : Kwan-Jang-Nim'},
+    7:{poomsae_imposes:['Poomsae Chunkwon'],poomsae_tirage:['1 proposé + 1 tiré au sort : Koryo, Keumgan, Taebek, Pyonwon, Sipjin, Jitae'],theorie:['Mémoire — thèmes annexe Examen 6e Dan','Version Kukkiwon en anglais obligatoire'],arbitrage:['Pas concerné'],hss_imposes:[],hss_tirage:['Pas concerné'],eyk:['Démonstration technique commentée des mouvements clés du Poomsé','Application avec partenaire'],prereq:'6ème Dan — Autorisation CSDGE — Titre : Kwan-Jang-Nim'},
+    8:{poomsae_imposes:['Poomsae Hansoo'],poomsae_tirage:['1 proposé + 1 tiré au sort : Chunkwon, Jitae, Sipjin'],theorie:['Cf. note relative aux mémoires 6, 7, 8, 9e Dan'],arbitrage:['Pas concerné'],hss_imposes:[],hss_tirage:['Pas concerné'],eyk:['Démonstration technique commentée des mouvements clés du Poomsé','Application avec partenaire'],prereq:'7ème Dan — Autorisation CSDGE — Titre : Chong-Kwan-Jang-Nim'},
+    9:{poomsae_imposes:['Poomsae Ilyo'],poomsae_tirage:['1 proposé + 1 tiré au sort : Hansoo, Chunkwon, Jitae'],theorie:['Cf. note relative aux mémoires 6, 7, 8, 9e Dan'],arbitrage:['Pas concerné'],hss_imposes:[],hss_tirage:['Pas concerné'],eyk:['Démonstration technique commentée des mouvements clés du Poomsé','Application avec partenaire'],prereq:'8ème Dan — Autorisation CSDGE — Titre : Chong-Kwan-Jang-Nim'}
+  };
+
+  const m = DAN_META[num];
+  const k = KIBONS[num];
+  const hasKibon = !!k;
+
+  const row = (txt, gold) => `<div style="font-size:13px;color:${gold?'var(--gold)':'var(--text)'};padding:5px 0;border-bottom:1px solid #1e1e1e;display:flex;gap:8px;align-items:baseline;"><span style="color:${gold?'var(--gold)':'var(--text3)'};flex-shrink:0;">▸</span>${txt}</div>`;
+  const rowImp = txt => `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #1e1e1e;"><span style="background:rgba(76,175,122,0.15);color:var(--green);font-size:10px;padding:2px 7px;border-radius:4px;font-weight:500;letter-spacing:0.06em;flex-shrink:0;">IMPOSÉ</span><span style="font-size:13px;color:var(--text);">${txt}</span></div>`;
+  const rowTirage = txt => `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #1e1e1e;"><span style="background:rgba(76,127,201,0.15);color:#7ab0e8;font-size:10px;padding:2px 7px;border-radius:4px;font-weight:500;letter-spacing:0.06em;flex-shrink:0;">TIRAGE</span><span style="font-size:13px;color:var(--text);">${txt}</span></div>`;
+
+  const card = (icon, title, color, body) => `
+    <div style="background:var(--bg2);border:1px solid #2a2a2a;border-left:3px solid ${color};border-radius:var(--radius);margin-bottom:16px;">
+      <div style="padding:12px 16px;background:var(--bg3);border-bottom:1px solid #222;display:flex;align-items:center;gap:10px;">
+        <span style="font-size:18px;">${icon}</span>
+        <span style="font-size:14px;font-weight:500;color:var(--text);">${title}</span>
+      </div>
+      <div style="padding:12px 16px;">${body}</div>
+    </div>`;
+
+  // MODULE A — Poomsé
+  const pBody = m.poomsae_imposes.map(rowImp).join('') + m.poomsae_tirage.map(rowTirage).join('');
+
+  // MODULE A — Kibon
+  let kBody = '';
+  if (hasKibon) {
+    const kGroup = (label, color, items) => `
+      <div style="margin-bottom:14px;">
+        <div style="font-size:10px;color:${color};text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;font-weight:600;">${label}</div>
+        ${items.map(t=>`<div style="font-size:12px;color:var(--text);padding:5px 8px;margin-bottom:4px;background:var(--bg3);border-radius:5px;border-left:2px solid ${color};">${t}</div>`).join('')}
+      </div>`;
+    kBody = `<div style="font-size:11px;color:var(--text3);margin-bottom:12px;">Source : ${k.src} — Tirage 2 cartes par groupe lors de l'examen</div>` +
+      kGroup('Membres supérieurs + positions','var(--gold)',k.ms) +
+      kGroup('Membres inférieurs','#7ab0e8',k.mi) +
+      kGroup('Membres supérieurs + inférieurs + positions','var(--green)',k.mx);
+  } else if (m.eyk) {
+    kBody = `<div style="font-size:13px;color:var(--text3);margin-bottom:12px;">Kibon + Eung Yong Kisoul — Programme ${num}e Dan (fiches CSDGE FFTDA)</div>` +
+      m.eyk.map(e=>row(e,false)).join('');
+  } else {
+    kBody = `<div style="font-size:13px;color:var(--text3);">Programme ${num}e Dan — fiches CSDGE FFTDA (8 enchaînements par groupe, 2 tirés au sort)</div>`;
+  }
+
+  // MODULE B
+  const bBody = `
+    <div style="margin-bottom:12px;">
+      <div style="font-size:10px;color:#7ab0e8;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;font-weight:600;">Arbitrage</div>
+      ${m.arbitrage.map(a=>row(a,false)).join('')}
+    </div>
+    <div>
+      <div style="font-size:10px;color:var(--gold);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;font-weight:600;">Théorie</div>
+      ${m.theorie.map(t=>row(t,false)).join('')}
+    </div>`;
+
+  // MODULE C — Han Bon
+  const hanBon = `
+    <div style="margin-bottom:10px;">${['2 Han Bon membres supérieurs','2 Han Bon membres inférieurs','2 Han Bon membres inférieurs sautés'].map(rowImp).join('')}</div>
+    <div style="font-size:11px;color:var(--text3);">Critères : Originalité, difficulté, réalisme · Précision · Maîtrise · Vitesse</div>`;
+
+  // MODULE C — HSS
+  const hssImposes = m.hss_imposes && m.hss_imposes.length
+    ? m.hss_imposes.map(rowImp).join('')
+    : '';
+  const hssTirage = m.hss_tirage && m.hss_tirage.length && m.hss_tirage[0] !== 'Pas concerné'
+    ? m.hss_tirage.map(rowTirage).join('')
+    : row('Pas concerné', false);
+  const hssBody = hssImposes + hssTirage;
+
+  // MODULE C — Kyorugui
+  const kyBody = num >= 6
+    ? row('Pas concerné', false)
+    : `${row('2 rounds × 1 minute', true)}
+       ${row('15 points par round — points candidats non comptabilisés', false)}
+       <div style="margin-top:10px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Équipements</div>
+       ${['Coquille','Pitaines','Mitaines','Casque','Protège-tibias','Protège avant-bras','Protège-dents','Plastron'].map(e=>`<span style="display:inline-block;background:var(--bg3);border:1px solid #333;color:var(--text3);font-size:11px;padding:3px 8px;border-radius:4px;margin:2px;">${e}</span>`).join('')}`;
+
+  // Prérequis badge
+  const prereqHtml = m.prereq ? `
+    <div style="background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.2);border-radius:8px;padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;gap:12px;">
+      <span style="font-size:18px;">📋</span>
+      <div style="font-size:13px;color:var(--text);">${m.prereq}</div>
+    </div>` : '';
+
+  return prereqHtml +
+    '<div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:16px;">Module A</div>' +
+    card('🎭', 'Poomsae', 'var(--gold)', pBody) +
+    card('🥊', 'Kibon', 'var(--gold)', kBody) +
+    '<div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:0.1em;margin:20px 0 16px;">Module B — Arbitrage & Théorie</div>' +
+    card('📚', 'Arbitrage & Théorie', '#7ab0e8', bBody) +
+    '<div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:0.1em;margin:20px 0 16px;">Module C</div>' +
+    card('🤼', 'Han Bon Kyorugui', 'var(--green)', hanBon) +
+    card('🛡', 'Ho Shin Sul', 'var(--green)', hssBody) +
+    card('⚔', 'Kyorugui', 'var(--green)', kyBody);
+}
+
+
+
+
+const KIBONS = {
+    1: {
+      ms:[
+        '1 — Dwitt Koubi Seugui · Han Sonnal Momtong Bakkat Maki, Ap Koubi Seugui · Jebipoum Mok Tchigui',
+        '2 — Ap Koubi Seugui · Han Sonnal Eulgoul Biteuro Maki, Eulgoul Bandé Jileugui',
+        '3 — Joutchoum Seugui · Han Sonnal Momtong Yop Maki, Momtong Yop Jileugui',
+        '4 — Ap Koubi Seugui · Jebipoum Mok Tchigui, Deung Joumok Eulgoul Ap Tchigui',
+        '5 — Dwitt Koubi Seugui · Keudeuro Momtong Bakkat Maki, Ap Koubi Seugui · Palkoup Dolyeu Tchigui',
+        '6 — Ap Koubi Seugui · Momtong Hetcheu Maki, Dwitt Koa Seugui · Dou Joumok Jetcheu Jileugui',
+        '7 — Dwitt Koubi Seugui · Sonal Are Maki, Beum Seugui · Batang son Momtong Maki',
+        '8 — Dwitt Koubi Seugui · Momtong Bakkat Maki, Ap Koubi Seugui · Me Joumok Neryochigui'
+      ],
+      mi:[
+        '1 — Nelyeu Tchagui, Bandal Tchagui, Dwitt Tchagui',
+        '2 — Yop Tchagui, Ap Bal Fouryeu Tchagui',
+        '3 — Tuyeu Dolyeu Tchagui (sur cible)',
+        '4 — Y Oh Dolyeu Tchagui',
+        '5 — Sokkot Tchagui',
+        '6 — Ap Bal Tuyeu Ap Tchagui (sur cible)',
+        '7 — Dou Bal Dang Sang Ap Tchagui',
+        '8 — Bandal Tchagui, Mom Dolyeu Foulyeu Tchagui'
+      ],
+      mx:[
+        '1 — Ap Seugui · Han Sonnal Jebipoum Mok Tchigui, Ap Tchagui, Ap Koubi Seugui · Palkoup Dolyeu Tchigui',
+        '2 — Ap Seugui · Deung Joumok Eulgoul Bakkat Tchigui, Ap Tchagui, Ap Koubi Seugui · Momtong Baro Jileugui',
+        '3 — Dwitt Koubi Seugui · Han Sonnal Momtong Bakkat Maki, Yop Tchagui, Ap Koubi Seugui · Palkoup Momtong Pyojok Tchigui',
+        '4 — Dwitt Koubi Seugui · Sonnal Momtong Maki, Dolyeu Tchagui, Ap Koubi Seugui · Eulgoul Bakkat Maki, Momtong Baro Jileugui',
+        '5 — Ap Koubi Seugui · Han Sonnal Eulgoul Biteuro Maki, Dolyeu Tchagui, Momtong Baro Jileugui',
+        '6 — Ap Koubi Seugui · Owe San Teul Maki, Ap Bal Yop Tchagui, Ap Koubi Seugui · Jebipoum Mok Tchigui',
+        '7 — Beum Seugui · Sonnal Momtong Maki, Ap Bal Ap Tchagui, Ap Koubi Seugui · Momtong Baro Jileugui',
+        '8 — Dwitt Koubi Seugui · Keudeuro Are Maki, Ap Tchagui, Ap Koubi Seugui · Momtong Doubonn Jileugui'
+      ],
+      src:'Cartes Kibon 1er dan V2.pdf'
+    },
+    2: {
+      ms:[
+        '1 — Tchoumbi Seugui : Dwitt Koubi Seugui · Sonnal Momtong Maki, Ap Koubi Seugui · Pyon Son Keut Are Jetcheu Tchireugui',
+        '2 — Tchoumbi Seugui : Joutchoum Seugui · Han Sonnal Momtong Yop Maki, Joumok Pjyojok Jileugui, Ap Koubi Seugui · Pyon Sonn Keut',
+        '3 — Tchoumbi Seugui : Ap Koubi Seugui · Mouroup Koki, Ap Seugui · An Palmok Momtong Hetcheu Maki',
+        '4 — Tchoumbi Seugui : Joutchoum Seugui · Han Sonnal Momtong Yop Maki, Pyojok Jileugui, Ap Koubi Seugui · Pyon Sonn Keut, Ale Jetcho Tchireugui',
+        '5 — Tchoumbi Seugui : Ap Koubi Seugui · Owe San Teul Maki, Mouroup Kokki',
+        '6 — Tchoumbi Seugui : Ap Seugui · Batang Son Noulo Maki, Joutchoum Seugui · Palkoup Yop Tchigui',
+        '7 — Tchoumbi Seugui : Ap Koubi Seugui · Momtong Hetcheu Maki, Ap Koubi Seugui · Pyon Sonkeut Sewo Tchileugui',
+        '8 — Tchoumbi Seugui : Ap Koubi Seugui · Jebipoum Mok Tchigui, Mouroup Kokki'
+      ],
+      mi:[
+        '1 — Kyorugui Tchoumbi Seugui : Bandal Tchagui, Dwitt Tchagui',
+        '2 — Kyorugui Tchoumbi Seugui : Ap Bal Yop Tchagui, Ap Bal Foulyeu Tchagui, Tuyeu Dolyeu Tchagui',
+        '3 — Kyorugui Tchoumbi Seugui : Tuyeu Dwitt Tchagui (cible : raquette)',
+        '4 — Kyorugui Tchoumbi Seugui : Keudeup Dolyeu Tchagui, Ap Bal Foulyeu Tchagui',
+        '5 — Kyorugui Tchoumbi Seugui : Sokkot Tchagui',
+        '6 — Kyorugui Tchoumbi Seugui : Tuyeu Mom Dolyeu Foulyeu Tchagui (cible : raquette)',
+        '7 — Kyorugui Tchoumbi Seugui : Pyo Jeuk Tchagui (une cible ou sa main)',
+        '8 — Kyorugui Tchoumbi Seugui : Dwit Bal Kouroh Foulyeu Tchagui'
+      ],
+      mx:[
+        '1 — Tchoumbi Seugui : Ap Koubi Seugui · Owe San Teul Maki, Yop Tchagui, Ap Koubi Seugui · Palkoup Pyojok Tchigui',
+        '2 — Tchoumbi Seugui : Ap Koubi Seugui · Kaoui Maki, Ap Tchagui, Ap Koubi Seugui · Dang Kyeu Teuk Jileugui',
+        '3 — Tchoumbi Seugui : Ap Koubi Seugui · Pyon Son Keut Are Jetcheu Tchireugui, Yop Tchagui, Palkoup Dolyeu Tchigui',
+        '4 — Tchoumbi Seugui : Dwitt Koubi Seugui · Sonnal Momtong Maki, Keudeup Yop Tchagui, Ap Koubi Seugui · A Gui Son Caljaebi',
+        '5 — Tchoumbi Seugui : Ap Koubi Seugui · Montong Hetcheu Maki, Ap Tchagui, Ap Koubi Seugui · Mouroup Kokki',
+        '6 — Tchoumbi Seugui : Dwitt Koubi Seugui · Keudeuro Momtong Bakkat Maki, Dolyeu Tchagui, Ap Koubi Seugui · A Gui Son Caljaebi',
+        '7 — Tchoumbi Seugui : Ap Koubi Seugui · Han Sonnal Are Maki, A Gui Son Caljaebi, Dou Bal Dang Sang Ap Tchagui, Ap Koubi Seugui · Me Joumok Nelyeu Tchigui',
+        '8 — Tchoumbi Seugui : Dwitt Koubi Seugui · Keudeuro Are Maki, Ap Tchagui, Ap Koubi Seugui · Momtong Doubonn Jileugui'
+      ],
+      src:'Cartes Kibon 2e dan V2.pdf'
+    },
+    3: {
+      ms:[
+        '1 — Tchoumbi Seugui : Ap Koubi Seugui · An Palmok Momtong Hetcheu Maki, Joutchoum Seugui · San Teul Maki',
+        '2 — Tchoumbi Seugui : Hakdari Seugui · Keumgan Maki, Ap Koubi Seugui · Pyon Son Keut Are Jetcheu Tchireugui',
+        '3 — Tchoumbi Seugui : Ap Koubi Seugui · Kawi Maki, Momtong Doubonn Jileugui',
+        '4 — Tchoumbi Seugui : Ap Koubi Seugui · Dang Kyeu Teuk Jileugui, Han Sonnal Mok Bakkat Tchigui',
+        '5 — Tchoumbi Seugui : Dwitt Koubi Seugui · Han Sonnal Momtong Bakkat Maki, Ap Koubi Seugui · Ba Tang Son Teuk Tchigui',
+        '6 — Tchoumbi Seugui : Beum Seugui · Ba Tang Son Momtong Maki, Ap Koubi Seugui · Pyon Son Keut Are Jetcheu Tchileugui',
+        '7 — Tchoumbi Seugui : Ap Seugui · Batanson Noullo Maki, Joutchoum Seugui · Palkoup Yop Tchigui',
+        '8 — Tchoumbi Seugui : Dwitt Koubi Seugui · Keumgang Maki, Dwitt Koa Seugi · Dou Joumok Jetcheu Jileugui'
+      ],
+      mi:[
+        '1 — Kyorugui Tchoumbi Seugui : Bandal Tchagui, Dwitt Tchagui',
+        '2 — Kyorugui Tchoumbi Seugui : Bandal Tchagui, Keudeup Dolyeu Tchagui',
+        '3 — Kyorugui Tchoumbi Seugui : Ap Tchagui, Tuyeu Yop Tchagui',
+        '4 — Kyorugui Tchoumbi Seugui : Tuyeu Mom Dolyeu Foulyeu Tchagui (cible : raquette)',
+        '5 — Kyorugui Tchoumbi Seugui : Ap Tchagui, Keudeup Yop Tchagui',
+        '6 — Kyorugui Tchoumbi Seugui : Y Ho Sok Oh Tchagui',
+        '7 — Kyorugui Tchoumbi Seugui : Bandal Tchagui, Ap Bal Foulyeu Tchagui',
+        '8 — Kyorugui Tchoumbi Seugui : Tuyeu Dwitt Tchagui (cible : raquette)'
+      ],
+      mx:[
+        '1 — Tchoumbi Seugui : Ap Koubi Seugui · An Palmok Momtong Hetcheu Maki, Ap Tchagui, Batang Son Teuk Tchigui',
+        '2 — Tchoumbi Seugui : Ap Koubi Seugui · Han Sonnal Mok Bakkat Tchigui, Dolyeu Tchagui, Mouroup Kkoki',
+        '3 — Tchoumbi Seugui : Joutchoum Seugui · San Teul Maki, Ap Tchagui, Joutchoum Seugui · Palkoup Yop Tchigui',
+        '4 — Tchoumbi Seugui : Dwitt Koubi Seugui · Keudeuro Momtong Bakkat Maki, Dou Bal Dang Sang Ap Tchagui, Ap Koubi Seugui · A Gui Son Caljaebi',
+        '5 — Tchoumbi Seugui : Ap Koubi Seugui · Eulgoul Bakkat Maki, Momtong Baro Jileugui, Ap Tchagui, Dwitt Koa Seugui · Deung Jou Mok Eulgoul Ap Tchigui',
+        '6 — Tchoumbi Seugui : Joutchoum Seugui · Han Sonnal Momtong Yopmaki, Ap Tchagui, Ap Koubi Seugui · Jebipoum Mok Tchigui',
+        '7 — Tchoumbi Seugui : Ap Koubi Seugui · Owe Santeul Maki, Ap Bal Yop Tchagui, Mouroup Kkoki',
+        '8 — Tchoumbi Seugui : Dwitt Koubi Seugui · Sonnal Momtong Maki, Dwitt Bal Foulyeu Tchagui, Ap Koubi Seugui · Eut Kouro Are Maki'
+      ],
+      src:'Carte_Kibon_3_D.pdf'
+    },
+    4: {
+      ms:[
+        '1 — Tchoumbi Seugui : Dwitt Koubi Seugui · Sonnal Are Maki, Ap Koubi Seugui · Mouroup Kokki',
+        '2 — Tchoumbi Seugui : Joutchoum Seugui · Keun Dol Chogui, San Teul Maki',
+        '3 — Tchoumbi Seugui : Dwitt Koubi Seugui · Keumgan Momtong Maki, Dan Kyeu Teuk Jileugui, Momtong Bande Jileugui',
+        '4 — Tchoumbi Seugui : Dwitt Koubi Seugui · Keudeuro Momtong Bakkat Maki, Beum Seugui · Sonnal Are Hetcheu Maki',
+        '5 — Tchoumbi Seugui : Ap Koubi Seugui · Han Sonnal Mok Bakkat Tchigui, Palkoup Dolyeu Tchigui',
+        '6 — Tchoumbi Seugui : Ap Koubi Seugui · An Palmok Momtong Hetcheu Maki, Moa Seugui · Me Joumok Are Pyojok Tchigui',
+        '7 — Tchoumbi Seugui : Ap Koubi Seugui · Owe San Teul Maki, Ap Koubi Seugui · Mouroup Kokki',
+        '8 — Tchoumbi Seugui : Ap Koubi Seugui · Jebipoum Mok Tchigui, Joutchoum Seugui · San Teul Maki'
+      ],
+      mi:[
+        '1 — Kyorugui Tchoumbi Seugui : Han Gorum Nagamien Bandal Tchagui, Mom Dolyeu Foulyeu Tchagui',
+        '2 — Kyorugui Tchoumbi Seugui : Ap Bal Yop Tchagui, Ap Bal Foulyeu Tchagui, Dolyeu Tchagui',
+        '3 — Kyorugui Tchoumbi Seugui : Tuyeu Mom Dolyeu Foulyeu Tchagui (cible : raquette)',
+        '4 — Kyorugui Tchoumbi Seugui : Tuyeu Dwitt Tchagui (cible : raquette)',
+        '5 — Kyorugui Tchoumbi Seugui : Y Ho Sok Oh Tchagui',
+        '6 — Kyorugui Tchoumbi Seugui : Bandal Tchagui, Nelyeu Tchagui',
+        '7 — Kyorugui Tchoumbi Seugui : Ap Tchagui, Tuyeu Ap Tchagui',
+        '8 — Kyorugui Tchoumbi Seugui : Keudeup Yop Tchagui, Ap Bal Foulyeu Tchagui'
+      ],
+      mx:[
+        '1 — Tchoumbi Seugui : Dwitt Koubi Seugui · Keumgang Momtong Maki, Dang Kyeu Teuk Jileugui, Yop Tchagui, Ap Koubi Seugui · Han Sonnal Mok Bakkat Tchigui',
+        '2 — Tchoumbi Seugui : Joutchoum Seugui · San Teul Maki, Haktari Seugui · Keumgang Maki, Yop Tchagui, Ap Koubi Seugui · Momtong Baro Jileugui',
+        '3 — Tchoumbi Seugui : Ap Koubi Seugui · Pyon Sonkeut Sewo Tchileugui, Dolyeu Tchagui, Ap Koubi Seugui · Me Joumok Nelyeu Tchigui',
+        '4 — Tchoumbi Seugui : Ap Koubi Seugui · Deung Jou Mok Eulgoul Bakkat Tchigui, Pyo Jeuk Tchagui, Joutchoum Seugui · Momtong Yop Jileugui',
+        '5 — Tchoumbi Seugui : Ap Koubi Seugui · Kaoui Maki, Ap Tchagui, Ap Koubi Seugui · Mouroup Kokki',
+        '6 — Tchoumbi Seugui : Dwitt Koubi Seugui · Han Sonnal Momtong Bakkat Maki, Yop Tchagui, Ap Koubi Seugui · Kaoui Maki',
+        '7 — Tchoumbi Seugui : Beum Seugui · Sonnal Are Hetcheu Maki, Ap Tchagui, Ap Koubi Seugui · Momtong Doubonn Jileugui',
+        '8 — Tchoumbi Seugui : Dwitt Koubi Seugui · Keumgang Momtong Maki, Momtong Bande Jileugui, Yop Tchagui, Ap Koubi Seugui · Palkoup Pyojok Tchigui'
+      ],
+      src:'Cartes Kibon 4e dan V2.pdf'
+    }
+  };
+
+// ============================================================
+// DONNÉES EXAMEN BLANC PAR GRADE DAN
+// ============================================================
+const EXAM_DATA = {
+  '1er Dan': {
+    moduleA: {
+      note: '70 à 90 pts',
+      poomsae_imposes: ['Taegueug Pal Jang (8)'],
+      poomsae_tirage: ['Taegueug Il Jang (1)','Taegueug Yi Jang (2)','Taegueug Sam Jang (3)','Taegueug Sa Jang (4)','Taegueug Oh Jang (5)','Taegueug Yuk Jang (6)','Taegueug Tchil Jang (7)'],
+      nb_tirage: 1,
+      kibon_ms: [
+        '1 — Dwitt Koubi Seugui › Han Sonnal Momtong Bakkat Maki, Ap Koubi Seugui › Jebipoum Mok Tchigui',
+        '2 — Ap Koubi Seugui › Han Sonnal Eulgoul Biteuro Maki, Eulgoul Bandé Jileugui',
+        '3 — Joutchoum Seugui › Han Sonnal Momtong Yop Maki, Momtong Yop Jileugui',
+        '4 — Ap Koubi Seugui › Jebipoum Mok Tchigui, Deung Joumok Eulgoul Ap Tchigui',
+        '5 — Dwitt Koubi Seugui › Keudeuro Momtong Bakkat Maki, Ap Koubi Seugui › Palkoup Dolyeu Tchigui',
+        '6 — Ap Koubi Seugui › Momtong Hetcheu Maki, Dwitt Koa Seugui › Dou Joumok Jetcheu Jileugui',
+        '7 — Dwitt Koubi Seugui › Sonal Are Maki, Beum Seugui › Batang Son Momtong Maki',
+        '8 — Dwitt Koubi Seugui › Momtong Bakkat Maki, Ap Koubi Seugui › Me Joumok Neryochigui',
+      ],
+      kibon_mi: [
+        '1 — Nelyeu Tchagui, Bandal Tchagui, Dwitt Tchagui',
+        '2 — Yop Tchagui, Ap Bal Fouryeu Tchagui',
+        '3 — Tuyeu Dolyeu Tchagui (sur cible)',
+        '4 — Y Oh Dolyeu Tchagui',
+        '5 — Sokkot Tchagui',
+        '6 — Ap Bal Tuyeu Ap Tchagui (sur cible)',
+        '7 — Dou Bal Dang Sang Ap Tchagui',
+        '8 — Bandal Tchagui, Mom Dolyeu Foulyeu Tchagui',
+      ],
+      kibon_mixte: [
+        '1 — Ap Seugui › Han Sonnal Jebipoum Mok Tchigui, Ap Tchagui, Ap Koubi Seugui › Palkoup Dolyeu Tchigui',
+        '2 — Ap Seugui › Deung Joumok Eulgoul Bakkat Tchigui, Ap Tchagui, Ap Koubi Seugui › Momtong Baro Jileugui',
+        '3 — Dwitt Koubi Seugui › Han Sonnal Momtong Bakkat Maki, Yop Tchagui, Ap Koubi Seugui › Palkoup Momtong Pyojok Tchigui',
+        '4 — Dwitt Koubi Seugui › Sonnal Momtong Maki, Dolyeu Tchagui, Ap Koubi Seugui, Eulgoul Bakkat Maki, Momtong Baro Jileugui',
+        '5 — Ap Koubi Seugui › Han Sonnal Eulgoul Biteuro Maki, Dolyeu Tchagui, Momtong Baro Jileugui',
+        '6 — Ap Koubi Seugui › Owe San Teul Maki, Ap Bal Yop Tchagui, Ap Koubi Seugui › Jebipoum Mok Tchigui',
+        '7 — Beum Seugui › Sonnal Momtong Maki, Ap Bal Ap Tchagui, Ap Koubi Seugui › Momtong Baro Jileugui',
+        '8 — Dwitt Koubi Seugui › Keudeuro Are Maki, Ap Tchagui, Ap Koubi Seugui › Momtong Doubonn Jileugui',
+      ],
+    },
+    moduleB: {
+      arbitrage_theme: 'Règles d\'arbitrage et de compétition technique et combat',
+      arbitrage_qcm: [
+        {q:'Qu\'est-ce qu\'une "Gam-jeom" en combat ?', opts:['Un point marqué','Une faute sanctionnée par -1 pt adversaire','Un avertissement sans pénalité','Un coup de pied sauté'], correct:1},
+        {q:'Combien de rounds comporte un combat officiel en compétition senior ?', opts:['1 round de 2 min','2 rounds de 1 min','3 rounds de 2 min','2 rounds de 2 min'], correct:2},
+        {q:'Quelle zone est interdite à frapper en combat Taekwondo ?', opts:['La tête avec le pied','Le torse avec le pied','Le dos du torse avec le pied','Les jambes'], correct:2},
+        {q:'Que signifie le signal "Kal-yeo" de l\'arbitre ?', opts:['Commencez','Stop / Séparez-vous','Fin du combat','Point accordé'], correct:1},
+        {q:'Un coup de pied retourné à la tête vaut combien de points ?', opts:['1','2','3','4'], correct:2},
+        {q:'Quelle couleur de tenue porte le compétiteur "Chong" ?', opts:['Rouge','Blanc','Bleu','Noir'], correct:2},
+        {q:'Qu\'est-ce que le "Vinyl" en compétition poomsé ?', opts:['Un type de combat','La zone d\'exécution du poomsé','Un équipement de protection','Une faute d\'arbitrage'], correct:1},
+        {q:'Après combien de "Gam-jeom" le combattant est-il disqualifié ?', opts:['3','5','10','2'], correct:1},
+        {q:'Quel équipement n\'est PAS obligatoire en combat FFTDA ?', opts:['Casque','Plastron électronique','Protège-dents','Chaussons de taekwondo'], correct:3},
+        {q:'Un coup de poing au torse vaut combien de points ?', opts:['0','1','2','3'], correct:1},
+        {q:'Que désigne le terme "Kyong-go" ?', opts:['Disqualification','Avertissement (demi-pénalité)','Arrêt du combat','Point accordé'], correct:1},
+        {q:'Quel est le rôle du juge de coin lors d\'un combat ?', opts:['Arbitrer le combat','Chronométrer les rounds','Évaluer les techniques et conseiller l\'arbitre central','Annonce le score'], correct:2},
+        {q:'En compétition poomsé, sur quels critères est-on noté ?', opts:['Vitesse uniquement','Technique, précision du diagramme, rythme, puissance, équilibre','Nombre de techniques','Durée d\'exécution'], correct:1},
+        {q:'Que signifie "Shi-gan" pour l\'arbitre ?', opts:['Point','Temps mort / Arrêt','Fin du match','Avertissement'], correct:1},
+        {q:'En cas d\'erreur de diagramme dans un poomsé, quelle est la règle ?', opts:['Note de 0','Le jury demande une nouvelle exécution notée sur 10 pts','L\'épreuve est annulée','Le candidat est éliminé'], correct:1},
+      ],
+      theorie_theme: 'La FFTDA et la vie associative',
+      theorie_qcm: [
+        {q:'Que signifie l\'acronyme FFTDA ?', opts:['Fédération Française de Taekwondo et Disciplines Associées','Fédération Française de Taekwondo et Arts martiaux','Fédération Française Taekwondo et Défense Associée','Fonds Fédéral Taekwondo Disciplines Associées'], correct:0},
+        {q:'Quel est l\'organe mondial qui régit le Taekwondo ?', opts:['La FFTDA','Le World Taekwondo (WT)','L\'ITF','Le Kukkiwon'], correct:1},
+        {q:'Qu\'est-ce que le Kukkiwon ?', opts:['Un poomsé','L\'académie mondiale du Taekwondo à Séoul','Une compétition internationale','Un titre de Maître'], correct:1},
+        {q:'À quoi correspond la CSDGE dans la FFTDA ?', opts:['Commission Sportive De Gestion des Examens','Commission de Sécurité et Droit aux Grades et Examens','Comité Supérieur de Direction et Gouvernance','Commission Sportive de Diplômes et Grades Éducatifs'], correct:0},
+        {q:'Le Taekwondo est devenu sport olympique officiel lors de ?', opts:['Los Angeles 1984 (démonstration)','Séoul 1988 (démonstration), Sydney 2000 (officiel)','Atlanta 1996','Barcelone 1992'], correct:1},
+        {q:'Qu\'est-ce qu\'un passeport sportif en Taekwondo ?', opts:['Un document de voyage','Le carnet officiel enregistrant grades et licences','Le programme d\'examen','La carte de membre du club'], correct:1},
+        {q:'Quel document est nécessaire pour passer un grade officiel FFTDA ?', opts:['Passeport sportif à jour et formulaire d\'inscription','Seule la carte de licence','Un certificat médical uniquement','Un courrier du club'], correct:0},
+        {q:'Que signifie "Ye-ui" parmi les valeurs fondamentales du Taekwondo ?', opts:['Persévérance','Maîtrise de soi','Courtoisie','Intégrité'], correct:2},
+        {q:'Que signifie "Yom-chi" ?', opts:['Esprit indomptable','Courtoisie','Persévérance','Intégrité'], correct:3},
+        {q:'Combien de valeurs fondamentales comporte le Taekwondo ?', opts:['3','4','5','6'], correct:2},
+        {q:'Qu\'est-ce qu\'une "saison sportive" dans le contexte des grades FFTDA ?', opts:['Une année civile','Une année sportive (septembre-août)','Deux ans consécutifs','La durée entre deux championnats'], correct:1},
+        {q:'Quel est le rôle principal d\'un club affilié à la FFTDA ?', opts:['Organiser uniquement des compétitions','Délivrer les ceintures noires','Proposer une pratique encadrée et affiliée à la fédération','Gérer les arbitres nationaux'], correct:2},
+        {q:'Le grade de 1er Dan correspond au titre coréen de...', opts:['Kyo-Sa-Nim','Jo-Kyo-Nim','Sa-Bon-Nim','Boo-Sa-Bon-Nim'], correct:1},
+        {q:'Qu\'est-ce que "In-nae" dans les valeurs du Taekwondo ?', opts:['Maîtrise de soi','Courtoisie','Intégrité','Persévérance'], correct:3},
+        {q:'Une licence FFTDA est valable pour quelle durée ?', opts:['6 mois','1 an (saison sportive)','2 ans','Indéfiniment'], correct:1},
+      ],
+    },
+    moduleC: {
+      hanbon: {
+        note: '/20',
+        fixe: [
+          {texte:'2 Han Bon membres supérieurs'},
+          {texte:'2 Han Bon membres inférieurs'},
+          {texte:'2 Han Bon membres inférieurs sautés — Les 6 contres exécutés dans l\'ordre et consécutivement'},
+        ],
+        criteres: ['Respect du protocole du Hanbon','Précision de la riposte','Respect des mouvements demandés'],
+      },
+      hss: {
+        label: 'Ho Shin Sul',
+        note: '/20',
+        imposes: [
+          'Saisie du poignet direct (dégagement imposé)',
+          'Saisie du poignet croisé (dégagement imposé)',
+          'Saisie des deux poignets (dégagement imposé)',
+        ],
+        tirage: [
+          'Saisie d\'un poignet à deux mains',
+          'Saisie des deux poignets par derrière',
+        ],
+        nb_tirage: 2,
+      },
+      kyorugui: {
+        note: '/30',
+        format: '2 rounds × 1 minute',
+        equipements: ['Coquille','Pitaines','Mitaines','Casque','Protège-tibias','Protège avant-bras','Protège-dents','Plastron (électronique en compétition)'],
+        consignes: [
+          'Les combats se déroulent selon les règles de compétition FFTDA',
+          'Il est accordé 15 points par round — les points marqués par les candidats ne sont pas comptabilisés',
+          'Le jury évalue : précision des gestes, sens tactique, stratégies, qualité des techniques, combativité',
+          'Dans la mesure du possible les candidats sont regroupés par catégories d\'âge, de poids et de sexe',
+          'Les candidats de +60 ans : aménagement possible (2 rounds en mode Assauts)',
+        ],
+      },
+    },
+  },
+
+  '2ème Dan': {
+    moduleA: {
+      note: '70 à 90 pts',
+      poomsae_imposes: ['Koryo (imposé)'],
+      poomsae_tirage: ['Taegueug Il Jang (1)','Taegueug Yi Jang (2)','Taegueug Sam Jang (3)','Taegueug Sa Jang (4)','Taegueug Oh Jang (5)','Taegueug Yuk Jang (6)','Taegueug Tchil Jang (7)','Taegueug Pal Jang (8)'],
+      nb_tirage: 1,
+      kibon_ms: KIBONS[2].ms,
+      kibon_mi: KIBONS[2].mi,
+      kibon_mixte: KIBONS[2].mx,
+    },
+    moduleB: {
+      arbitrage_theme: 'La filière d\'arbitrage et règles de compétition combat et technique',
+      arbitrage_qcm: [
+        {q:'Quels sont les niveaux de la filière d\'arbitrage FFTDA ?', opts:['Régional, National, International','Départemental, Régional, National, International','Club, Régional, National','National, Européen, Mondial'], correct:1},
+        {q:'Qu\'est-ce qu\'un arbitre "D" ?', opts:['Arbitre international','Arbitre national de haut niveau','Arbitre de niveau départemental/régional débutant','Arbitre diplômé avancé'], correct:2},
+        {q:'Le rôle du juge de table lors d\'un combat est de...', opts:['Arbitrer les échanges','Gérer le chronomètre et les scores officiels','Conseiller les combattants','Vérifier les équipements'], correct:1},
+        {q:'Qu\'est-ce qu\'un "Gam-jeom" de niveau 2 entraîne ?', opts:['1 point pour l\'adversaire','2 points pour l\'adversaire','Disqualification immédiate','Avertissement sans pénalité'], correct:1},
+        {q:'En compétition poomsé, sur quels critères est-on noté ?', opts:['Vitesse uniquement','Technique, diagramme, rythme, puissance, équilibre, stabilité, concentration, respiration','Nombre de techniques','Durée d\'exécution'], correct:1},
+        {q:'Que vérifie un arbitre avant le début d\'un combat ?', opts:['Uniquement le plastron','Les équipements de protection obligatoires et leur conformité','Seulement le casque','La couleur de la ceinture'], correct:1},
+        {q:'Quelle est la signification du geste "doigt vers le bas" de l\'arbitre ?', opts:['Point accordé à Chong','Point accordé à Hong','Remise en position de départ','Faute signalée'], correct:3},
+        {q:'Combien de juges de coin assistent l\'arbitre central en combat ?', opts:['0','1','2','3'], correct:2},
+        {q:'En poomsé, qu\'est-ce que la "ligne cible" ou diagramme ?', opts:['La note de puissance','Le tracé géographique du poomsé au sol','La vitesse d\'exécution','L\'orientation du regard'], correct:1},
+        {q:'En compétition poomsé, combien de juges évaluent un candidat ?', opts:['1','3','5','7'], correct:2},
+        {q:'Qu\'est-ce que le "Video Review" en compétition Taekwondo ?', opts:['Une caméra d\'entraînement','Le droit de contester une décision arbitrale via revue vidéo','Un système de chronométrage','Une retransmission en direct'], correct:1},
+        {q:'Pour devenir arbitre FFTDA, quelle est la première étape ?', opts:['Avoir le 1er Dan','Suivre une formation fédérale et passer l\'examen arbitrage','Participer à 10 compétitions','Avoir l\'accord du club'], correct:1},
+        {q:'Qu\'est-ce qu\'une "faute de comportement" en combat ?', opts:['Un coup technique raté','Un comportement anti-sportif','Un coup en dehors de la zone','Une attaque aux jambes'], correct:1},
+        {q:'En compétition poomsé junior, les critères d\'évaluation sont-ils identiques aux seniors ?', opts:['Oui, strictement identiques','Non, adaptés avec moins d\'exigence sur la puissance','Non, ils n\'ont pas de notation diagramme','Oui mais avec une durée plus courte'], correct:1},
+        {q:'Quelle est la durée maximale d\'une épreuve d\'arbitrage au Module B des Dan ?', opts:['5 minutes','10 minutes','15 minutes','30 minutes'], correct:2},
+      ],
+      theorie_theme: 'L\'historique du Taekwondo et la vie associative',
+      theorie_qcm: [
+        {q:'En quelle année le Taekwondo est-il devenu sport olympique officiel ?', opts:['1988 à Séoul','1992 à Barcelone','2000 à Sydney','1996 à Atlanta'], correct:2},
+        {q:'Où se trouve le siège du Kukkiwon ?', opts:['Tokyo, Japon','Pékin, Chine','Séoul, Corée du Sud','Lausanne, Suisse'], correct:2},
+        {q:'Qui est considéré comme le "père fondateur" du Taekwondo moderne ?', opts:['Général Choi Hong Hi','Général Kim Un Yong','Maître Hwang Kee','Maître Lee Won Kuk'], correct:0},
+        {q:'En quelle année le Taekwondo a-t-il été officiellement nommé "Taekwondo" ?', opts:['1945','1955','1973','1980'], correct:1},
+        {q:'Qu\'est-ce que le "Hwarang" ?', opts:['Un poomsé de niveau Dan','Une ancienne élite guerrière coréenne liée aux arts martiaux','Un type de combat traditionnel','Un titre honorifique Dan'], correct:1},
+        {q:'En quelle année le World Taekwondo a-t-il été fondé ?', opts:['1955','1963','1973','1988'], correct:2},
+        {q:'Quel art martial coréen traditionnel est l\'ancêtre du Taekwondo ?', opts:['Hapkido','Taek Kyon','Judo','Karaté'], correct:1},
+        {q:'Quel pays a introduit le Taekwondo aux JO 1988 comme sport de démonstration ?', opts:['La France','La Corée du Sud','Les États-Unis','Le Japon'], correct:1},
+        {q:'Que représente le diagramme en "I" du Taegueug Il Jang ?', opts:['Le feu','Le ciel (le Yang suprême)','La terre','L\'eau'], correct:1},
+        {q:'Combien de poomsé Taegueug existent dans le programme FFTDA ?', opts:['6','7','8','9'], correct:2},
+        {q:'Qu\'est-ce que la "KTA" ?', opts:['Korea Taekwondo Academy','Korean Taekwondo Association (fédération nationale coréenne)','Kukkiwon Training Academy','Korea Training Association'], correct:1},
+        {q:'Les Poomsé Taegueug ont été créés en quelle année ?', opts:['1955','1967','1972','1988'], correct:2},
+        {q:'Le 2e Dan correspond au titre coréen de...', opts:['Jo-Kyo-Nim','Kyo-Sa-Nim','Sa-Bon-Nim','Boo-Sa-Bon-Nim'], correct:1},
+        {q:'Quel est le premier Jeux Olympiques avec le TKD comme sport officiel ?', opts:['Séoul 1988','Barcelone 1992','Atlanta 1996','Sydney 2000'], correct:3},
+        {q:'Qu\'est-ce que "Baekjool Boolgool" dans les valeurs du Taekwondo ?', opts:['Courtoisie','Intégrité','Persévérance','Esprit indomptable'], correct:3},
+      ],
+    },
+    moduleC: {
+      hanbon: {
+        note: '/20',
+        fixe: [
+          {texte:'2 Han Bon membres supérieurs'},
+          {texte:'2 Han Bon membres inférieurs'},
+          {texte:'2 Han Bon membres inférieurs sautés'},
+        ],
+        criteres: ['Originalité, difficulté et réalisme','Précision des techniques et concentration','Maîtrise, équilibre et efficacité','Vitesse de réaction et d\'exécution'],
+      },
+      hss: {
+        label: 'Ho Shin Sul',
+        note: '/20',
+        imposes: [
+          'Saisie du revers du col à une main de face (bras semi-fléchi) — imposée',
+          'Double saisie du col de face — imposée',
+        ],
+        tirage: [
+          'Saisie du poignet direct',
+          'Saisie du poignet croisé',
+          'Saisie des deux poignets',
+          'Saisie d\'un poignet à deux mains',
+          'Saisie des deux poignets par derrière',
+        ],
+        nb_tirage: 3,
+      },
+      kyorugui: {
+        note: '/30',
+        format: '2 rounds × 1 minute',
+        equipements: ['Coquille','Pitaines','Mitaines','Casque','Protège-tibias','Protège avant-bras','Protège-dents','Plastron (électronique en compétition)'],
+        consignes: [
+          'Les combats se déroulent selon les règles de compétition FFTDA',
+          '15 points accordés par round — les points marqués ne sont pas comptabilisés',
+          'Évaluation : précision, sens tactique, stratégies, qualité technique, combativité',
+          'Regroupement par catégories d\'âge, de poids et de sexe dans la mesure du possible',
+          'Candidats +60 ans : coups de pied au niveau moyen autorisés, sautés remplaçables au sol',
+        ],
+      },
+    },
+  },
+
+  '3ème Dan': {
+    moduleA: {
+      note: '70 à 90 pts',
+      poomsae_imposes: ['Koryo (imposé)','Keumgan (imposé)'],
+      poomsae_tirage: ['Taegueug Il Jang (1)','Taegueug Yi Jang (2)','Taegueug Sam Jang (3)','Taegueug Sa Jang (4)','Taegueug Oh Jang (5)','Taegueug Yuk Jang (6)','Taegueug Tchil Jang (7)','Taegueug Pal Jang (8)'],
+      nb_tirage: 1,
+      kibon_ms: KIBONS[3].ms,
+      kibon_mi: KIBONS[3].mi,
+      kibon_mixte: KIBONS[3].mx,
+    },
+    moduleB: {
+      arbitrage_theme: 'Filière d\'arbitrage — règles arbitrage combat et technique',
+      arbitrage_qcm: [
+        {q:'Quels sont les 3 niveaux de qualification arbitre FFTDA ?', opts:['Club / Régional / National','Régional / National / International','Départemental / National / Fédéral','Régional / Fédéral / Olympique'], correct:1},
+        {q:'En combat, qu\'est-ce qu\'une "technique de pied à la tête" vaut ?', opts:['1 point','2 points','3 points','4 points'], correct:2},
+        {q:'En poomsé de compétition, comment est calculée la note finale ?', opts:['Somme simple','Moyenne après suppression de la note la plus haute et la plus basse','Note du juge principal uniquement','Vote à la majorité'], correct:1},
+        {q:'En combat, frapper l\'adversaire lorsqu\'il est à terre est...', opts:['Autorisé si technique','Interdit — Gam-jeom automatique','Autorisé une fois','Soumis à décision arbitrale'], correct:1},
+        {q:'En poomsé de compétition, qu\'évalue le critère "Rythme" ?', opts:['La vitesse globale','Les accélérations et ralentissements appropriés','Le nombre de techniques par seconde','La régularité de la vitesse'], correct:1},
+        {q:'Quel est le rôle du "centre de contrôle" dans un système PSS ?', opts:['Arbitrer le combat','Recevoir les signaux des capteurs et enregistrer les points','Chronométrer les rounds','Vérifier les équipements'], correct:1},
+        {q:'En cas d\'égalité à la fin des rounds, comment le vainqueur est désigné ?', opts:['Le plus léger gagne','Round supplémentaire "golden point" (1er point gagne)','Vote des arbitres','Reprise de 30 secondes puis vote'], correct:1},
+        {q:'Quel critère distingue une "Kyong-go" d\'une "Gam-jeom" ?', opts:['La gravité de l\'infraction','La zone touchée','L\'intentionnalité','La couleur de la tenue'], correct:0},
+        {q:'En poomsé, le critère "puissance" concerne...', opts:['La rapidité des techniques','La force et l\'intention martiale','L\'équilibre','Le diagramme'], correct:1},
+        {q:'Quel document un arbitre FFTDA présente lors d\'une compétition officielle ?', opts:['Sa licence de pratiquant','Sa carte d\'arbitre en cours de validité','Son passeport sportif','Son diplôme de 1er Dan'], correct:1},
+        {q:'En combat, la zone officielle mesure...', opts:['6×6 m','8×8 m','10×10 m','12×12 m'], correct:2},
+        {q:'Qui peut contester une décision via le "Video Review" ?', opts:['L\'arbitre central uniquement','Le coach de l\'équipe (1 demande par match)','Le juge de table','Le directeur de compétition'], correct:1},
+        {q:'Quel signal l\'arbitre utilise-t-il pour accorder un point en combat ?', opts:['Sifflet long','Sifflet court + geste de la main','Lever le poing','Crier le nom du combattant'], correct:1},
+        {q:'Quelle est la sanction immédiate pour un coup à l\'arrière du crâne ?', opts:['Kyong-go','Gam-jeom (pénalité)','Disqualification immédiate','Arrêt momentané'], correct:1},
+        {q:'Combien de temps maximum dure l\'épreuve d\'arbitrage du Module B ?', opts:['5 min','10 min','15 min','20 min'], correct:2},
+      ],
+      theorie_theme: 'Instances dirigeantes internationales et vie associative',
+      theorie_qcm: [
+        {q:'Quel est le nom de la fédération internationale de Taekwondo reconnue par le CIO ?', opts:['ITF','WT (World Taekwondo)','Kukkiwon','KTA'], correct:1},
+        {q:'Où se trouve le siège du World Taekwondo ?', opts:['Tokyo','Lausanne','Séoul','Bruxelles'], correct:2},
+        {q:'Quelle organisation est responsable de la délivrance des grades Dan internationaux ?', opts:['WT (World Taekwondo)','FFTDA','Kukkiwon (Académie mondiale)','CIO'], correct:2},
+        {q:'Qu\'est-ce que la "Continental Union" en Taekwondo ?', opts:['Une compétition par continent','La fédération continentale (ex : ETU pour l\'Europe)','Un grade spécifique au continent','Un programme d\'échange sportif'], correct:1},
+        {q:'Quel est le nom de la fédération européenne de Taekwondo ?', opts:['ETA','ETU (European Taekwondo Union)','European WT','CEE Taekwondo'], correct:1},
+        {q:'La FFTDA est...', opts:['Indépendante du WT','La fédération nationale affiliée au WT pour la France','Elle dirige le WT en Europe','Le WT est une sous-commission de la FFTDA'], correct:1},
+        {q:'Les Championnats du Monde de Taekwondo ont lieu tous les...', opts:['2 ans','4 ans','3 ans','5 ans'], correct:0},
+        {q:'Le rôle de la CSDGE au sein de la FFTDA est...', opts:['Organiser les compétitions nationales','Gérer les examens de grade Dan et les diplômes d\'enseignement','Superviser les arbitres','Financer les clubs affiliés'], correct:1},
+        {q:'La France a obtenu sa première médaille olympique TKD lors de...', opts:['2000 à Sydney','2004 à Athènes','2008 à Pékin','2012 à Londres'], correct:0},
+        {q:'Le 3e Dan correspond au titre coréen de...', opts:['Kyo-Sa-Nim','Jo-Kyo-Nim','Boo-Sa-Bon-Nim','Sa-Bon-Nim'], correct:2},
+        {q:'Qu\'est-ce que les "Jeux Mondiaux" pour le Taekwondo ?', opts:['Les Jeux Olympiques','Une compétition internationale pour disciplines non olympiques — le TKD y participe via le poomsé','Un tournoi continental','Les Jeux Paralympiques'], correct:1},
+        {q:'Quel document international certifie un grade Dan reconnu mondialement ?', opts:['La licence FFTDA','Le certificat Kukkiwon','Le passeport WT','Le diplôme du club'], correct:1},
+        {q:'Combien de fédérations nationales sont membres du World Taekwondo ?', opts:['Environ 50','Environ 100','Plus de 210','Exactement 180'], correct:2},
+        {q:'La DTN française a pour rôle principal...', opts:['Arbitrer les compétitions nationales','Définir la politique sportive nationale et encadrer les équipes de France','Délivrer les grades Dan en France','Gérer les affiliations des clubs'], correct:1},
+        {q:'Le Président du World Taekwondo est élu pour quelle durée ?', opts:['2 ans','4 ans','6 ans (mandat olympique)','8 ans'], correct:1},
+      ],
+    },
+    moduleC: {
+      hanbon: {
+        note: '/20',
+        fixe: [
+          {texte:'2 Han Bon membres supérieurs'},
+          {texte:'2 Han Bon membres inférieurs'},
+          {texte:'2 Han Bon membres inférieurs sautés'},
+        ],
+        criteres: ['Originalité, difficulté et réalisme','Précision des techniques et concentration','Maîtrise, équilibre et efficacité','Vitesse de réaction et d\'exécution'],
+      },
+      hss: {
+        label: 'Ho Shin Sul',
+        note: '/20',
+        imposes: [
+          'Bandal Tchagui au ventre — imposée',
+          'Ap Tchagui au ventre suivi de coup de poing niveau visage — imposée',
+          'Saisie du col ou de la manche + crochet au visage — imposée',
+        ],
+        tirage: [
+          'Saisie du col à une main de face (bras semi-fléchi)',
+          'Double saisie du col de face',
+          'Saisie du poignet direct',
+          'Saisie du poignet croisé',
+          'Saisie des deux poignets',
+          'Saisie d\'un poignet à deux mains',
+          'Saisie des deux poignets par derrière',
+        ],
+        nb_tirage: 2,
+      },
+      kyorugui: {
+        note: '/30',
+        format: '2 rounds × 1 minute',
+        equipements: ['Coquille','Pitaines','Mitaines','Casque','Protège-tibias','Protège avant-bras','Protège-dents','Plastron (électronique en compétition)'],
+        consignes: [
+          'Les combats se déroulent selon les règles de compétition FFTDA',
+          '15 points accordés par round — les points marqués ne sont pas comptabilisés',
+          'Évaluation : précision, sens tactique, stratégies, qualité technique, combativité',
+          'Regroupement par catégories d\'âge, de poids et de sexe dans la mesure du possible',
+        ],
+      },
+    },
+  },
+
+  '4ème Dan': {
+    moduleA: {
+      note: '70 à 90 pts',
+      poomsae_imposes: ['Taebek (imposé)'],
+      poomsae_tirage_1: ['Koryo','Keumgan'],
+      poomsae_tirage: ['Taegueug Il Jang (1)','Taegueug Yi Jang (2)','Taegueug Sam Jang (3)','Taegueug Sa Jang (4)','Taegueug Oh Jang (5)','Taegueug Yuk Jang (6)','Taegueug Tchil Jang (7)','Taegueug Pal Jang (8)'],
+      nb_tirage: 1,
+      kibon_ms: KIBONS[4].ms,
+      kibon_mi: KIBONS[4].mi,
+      kibon_mixte: KIBONS[4].mx,
+    },
+    moduleB: {
+      arbitrage_theme: 'Filière d\'arbitrage — règles de compétition combat et poomsé (niveau avancé)',
+      arbitrage_qcm: [
+        {q:'Quelles sont les conditions pour devenir arbitre national FFTDA ?', opts:['Avoir le 2e Dan et 3 ans d\'arbitrage régional','Avoir le 3e Dan, réussir l\'examen national et avoir officié en régional','Avoir le 4e Dan uniquement','Être membre du bureau fédéral'], correct:1},
+        {q:'En compétition poomsé senior, combien de juges notent un candidat ?', opts:['3','5','7','9'], correct:1},
+        {q:'Qu\'est-ce que le "Jeong-ji" ?', opts:['Un coup technique','L\'arrêt du combat sur décision arbitrale','Un point accordé','Une faute de comportement'], correct:1},
+        {q:'En combat PSS, quel capteur valide un point au corps ?', opts:['Capteur du casque','Capteur du plastron électronique','Juge de coin uniquement','Capteur des chaussons'], correct:1},
+        {q:'En poomsé en couple, les deux partenaires sont-ils notés indépendamment ?', opts:['Oui, note individuelle','Non, note collective unique','Oui mais avec un coefficient d\'harmonie','Non, seul le leader est noté'], correct:1},
+        {q:'Quel équipement PSS est spécifique au niveau de la tête ?', opts:['Plastron électronique','Casque avec capteur électronique','Chaussons de TKD','Gants de combat'], correct:1},
+        {q:'En arbitrage, que désigne "bras croisés devant la poitrine" ?', opts:['Arrêt du combat','Corps à corps — séparation','Point refusé','Avertissement au combattant'], correct:1},
+        {q:'En poomsé, si deux candidats ont la même note, le classement se décide par...', opts:['Tirage au sort','Nouvelle exécution d\'un poomsé','Critère de départage : note de technique','L\'ex-aequo est conservé'], correct:2},
+        {q:'Que se passe-t-il si un combattant tombe 3 fois en 1 round ?', opts:['Perte de 3 points','Le round est arrêté — adversaire gagne par KO technique','Kyong-go automatique','Le combat reprend normalement'], correct:1},
+        {q:'En poomsé, le critère "Concentration" évalue...', opts:['La force des techniques','L\'attention, le regard, la présence martiale','La régularité du rythme','Le maintien de l\'équilibre'], correct:1},
+        {q:'En compétition poomsé par équipes, combien de membres ?', opts:['2','3','4','5'], correct:1},
+        {q:'En combat WT, qu\'est-ce que le "Turning kick" électronique valide spécifiquement ?', opts:['Tout coup de pied circulaire','Un coup de pied retourné avec rotation ≥ 180° enregistré par le capteur','Un coup de pied sauté uniquement','Un double coup circulaire'], correct:1},
+        {q:'La durée maximale d\'un combat en éliminatoires senior FFTDA ?', opts:['3×2 min','2×2 min','3×2 min + prolongation si égalité','2×2 min + golden point si égalité'], correct:3},
+        {q:'En poomsé de haut niveau, qu\'évalue le "Kihap" (cri) ?', opts:['La puissance sonore','Le placement aux moments clés des techniques d\'impact','La durée du cri','Le nombre de cris'], correct:1},
+        {q:'Combien de temps maximum dure l\'épreuve du Module B ?', opts:['5 min','10 min','15 min','20 min'], correct:2},
+      ],
+      theorie_theme: 'L\'évolution du Taekwondo dans le contexte international et la vie associative',
+      theorie_qcm: [
+        {q:'Quel changement majeur a apporté le système PSS au Taekwondo de compétition ?', opts:['L\'introduction des poomsé en compétition','Le scoring électronique automatique réduisant la subjectivité arbitrale','L\'abandon des catégories de poids','L\'ajout du combat par équipes'], correct:1},
+        {q:'Qu\'est-ce que le "Taekwondo for All" initié par le WT ?', opts:['Un programme de poomsé adapté','Un programme de développement du TKD dans les pays défavorisés et zones de réfugiés','Un format de compétition open','Un label de qualité pour les clubs'], correct:1},
+        {q:'En quelle année le poomsé a-t-il été introduit comme discipline de compétition officielle du WT ?', opts:['1988','2000','2006','2010'], correct:2},
+        {q:'Qu\'est-ce que le "Grand Prix" en compétition mondiale de Taekwondo ?', opts:['Un championnat du monde alternatif','Série de compétitions internationales qualificatives pour les JO','Un tournoi réservé aux moins de 21 ans','La finale de la World Taekwondo League'], correct:1},
+        {q:'Comment le Taekwondo s\'est-il adapté au contexte de Paris 2024 ?', opts:['Aucun changement','Ajout d\'épreuves poomsé aux JO','Maintien du programme combat avec 8 catégories et introduction du para-taekwondo','Réduction à 4 catégories'], correct:2},
+        {q:'Qu\'est-ce que la "World Taekwondo Academy" ?', opts:['L\'ancienne appellation du Kukkiwon','Un centre de formation internationale des entraîneurs et arbitres du WT','Un programme de poomsé avancé','Un championnat réservé aux académies sportives'], correct:1},
+        {q:'En France, l\'élite nationale du TKD est gérée par...', opts:['Le Ministère des Sports directement','La DTN de la FFTDA','Le CNOSF','Le World Taekwondo directement'], correct:1},
+        {q:'Le passage au scoring électronique PSS a principalement modifié quelle stratégie ?', opts:['L\'abandon des coups de poing','La valorisation des techniques à la tête (3 pts) et retournées (4 pts)','L\'augmentation du nombre de Gam-jeom','La suppression des catégories de poids'], correct:1},
+        {q:'Qu\'est-ce que la "Taekwondo Humanitarian Foundation" (THF) ?', opts:['Un programme de formation d\'arbitres','Une organisation du WT pour développer le TKD dans les camps de réfugiés','Un fonds de soutien aux athlètes blessés','Un prix décerné aux meilleurs clubs'], correct:1},
+        {q:'Le 4e Dan correspond au titre coréen de...', opts:['Kyo-Sa-Nim','Boo-Sa-Bon-Nim','Sa-Bon-Nim','Soo-Suk-Sa-Bon-Nim'], correct:2},
+        {q:'Qu\'est-ce que le "Taekwondo Humanitarian Foundation" (THF) ?', opts:['Un programme de formation','Une organisation du WT pour les camps de réfugiés','Un fonds de soutien','Un prix fédéral'], correct:1},
+        {q:'Quel est l\'impact de la reconnaissance olympique sur le TKD ?', opts:['Aucun impact','Explosion du nombre de pratiquants et fédérations membres du WT (210+)','Réduction des disciplines','Uniformisation de la pratique en club'], correct:1},
+        {q:'Qu\'est-ce que l\'"e-Learning" proposé par le WT ?', opts:['Des combats en ligne','Des formations arbitres et entraîneurs accessibles en ligne','Un système de scoring virtuel','Des poomsé en réalité augmentée'], correct:1},
+        {q:'Quel terme désigne les catégories de poids en compétition combat TKD senior masculin ?', opts:['−54, −58, −68, −80, +80 kg','−58, −68, −80, −87, +87 kg','−60, −70, −80, −90, +90 kg','−58, −68, −80 kg seulement'], correct:1},
+        {q:'Qu\'est-ce que la "Grand Final" dans le circuit WT ?', opts:['La finale du championnat du monde','La dernière compétition du Grand Prix Series couronnant le classement annuel','Un match de gala','La finale du championnat continental'], correct:1},
+      ],
+    },
+    moduleC: {
+      hanbon: {
+        note: '/20',
+        fixe: [
+          {texte:'2 Han Bon membres supérieurs'},
+          {texte:'2 Han Bon membres inférieurs'},
+          {texte:'2 Han Bon membres inférieurs sautés'},
+        ],
+        criteres: ['Originalité, difficulté et réalisme','Précision des techniques et concentration','Maîtrise, équilibre et efficacité','Vitesse de réaction et d\'exécution'],
+      },
+      hss: {
+        label: 'Ho Shin Sul',
+        note: '/20',
+        imposes: [
+          'Étranglement à deux mains de face — imposée',
+          'Ceinturage de face avec les 2 bras libres — imposée',
+          'Ceinturage arrière bras pris — imposée',
+        ],
+        tirage: [
+          'Bandal Tchagui au ventre',
+          'Ap Tchagui au ventre suivi de coup de poing visage',
+          'Saisie du col ou manche + crochet au visage',
+          'Saisie du col à une main de face (bras semi-fléchi)',
+          'Double saisie du col de face',
+          'Saisie du poignet direct',
+          'Saisie du poignet croisé',
+          'Saisie des deux poignets',
+          'Saisie d\'un poignet à deux mains',
+          'Saisie des deux poignets par derrière',
+        ],
+        nb_tirage: 2,
+      },
+      kyorugui: {
+        note: '/30',
+        format: '2 rounds × 1 minute',
+        equipements: ['Coquille','Pitaines','Mitaines','Casque','Protège-tibias','Protège avant-bras','Protège-dents','Plastron (électronique en compétition)'],
+        consignes: [
+          'Les combats se déroulent selon les règles de compétition FFTDA',
+          '15 points accordés par round — les points marqués ne sont pas comptabilisés',
+          'Évaluation : précision, sens tactique, stratégies, qualité technique, combativité',
+          'Regroupement par catégories d\'âge, de poids et de sexe dans la mesure du possible',
+        ],
+      },
+    },
+  },
+
+  '5ème Dan': {
+    moduleA: {
+      note: '70 à 90 pts',
+      poomsae_imposes: ['Pyonwon (imposé)'],
+      poomsae_tirage: ['Koryo','Keumgan','Taebek'],
+      poomsae_tirage_2: ['Taegueug Sa Jang (4)','Taegueug Oh Jang (5)','Taegueug Yuk Jang (6)','Taegueug Tchil Jang (7)','Taegueug Pal Jang (8)'],
+      nb_tirage: 1,
+      kibon_ms: ['1 MS — Programme 5e Dan (fiches CSDGE FFTDA)','2 MS — Programme 5e Dan','3 MS — Programme 5e Dan','4 MS — Programme 5e Dan','5 MS — Programme 5e Dan','6 MS — Programme 5e Dan','7 MS — Programme 5e Dan','8 MS — Programme 5e Dan'],
+      kibon_mi: ['1 MI — Programme 5e Dan (fiches CSDGE FFTDA)','2 MI — Programme 5e Dan','3 MI — Programme 5e Dan','4 MI — Programme 5e Dan','5 MI — Programme 5e Dan','6 MI — Programme 5e Dan','7 MI — Programme 5e Dan','8 MI — Programme 5e Dan'],
+      kibon_mixte: ['1 Mixte — Programme 5e Dan (fiches CSDGE FFTDA)','2 Mixte — Programme 5e Dan','3 Mixte — Programme 5e Dan','4 Mixte — Programme 5e Dan','5 Mixte — Programme 5e Dan','6 Mixte — Programme 5e Dan','7 Mixte — Programme 5e Dan','8 Mixte — Programme 5e Dan'],
+    },
+    moduleB: {
+      arbitrage_theme: 'Filière d\'arbitrage et règles de compétition — niveau avancé',
+      arbitrage_qcm: [
+        {q:'Quelle est la procédure de "Video Review" en combat international WT ?', opts:['L\'arbitre central l\'initie','Le coach demande via un signal officiel, 1 demande par combat','Le juge de table l\'initie automatiquement','Le directeur de compétition uniquement'], correct:1},
+        {q:'En poomsé de haut niveau, qu\'évalue spécifiquement le critère "Kihap" ?', opts:['La puissance sonore','Le placement aux moments clés des techniques d\'impact','La durée du cri','Le nombre de cris'], correct:1},
+        {q:'Comment se calcule la note technique en compétition poomsé (barème WT) ?', opts:['Note de 6 à 10 par juge, moyenne simple','Notes accuracy + presentation avec suppression des extrêmes','Seule la note de diagramme compte','Vote à la majorité des 5 juges'], correct:1},
+        {q:'En combat WT, qu\'est-ce que le "Twio Naeryeo Tchagui" sauté descendant vaut ?', opts:['1 point','2 points','3 points','4 points'], correct:3},
+        {q:'Qu\'est-ce que le "Referee Committee" dans une compétition internationale ?', opts:['Arbitrer les combats en direct','Superviser la qualité arbitrale et traiter les réclamations','Gérer le tableau des résultats','Former les arbitres sur place'], correct:1},
+        {q:'Qu\'est-ce que le "Park-da" en poomsé ?', opts:['Une position de combat','L\'arrêt complet après la dernière technique avant de revenir en position de départ','Un type de blocage','Un déplacement spécifique'], correct:1},
+        {q:'Qu\'est-ce que le "Instant Replay System" en compétition TKD ?', opts:['Un entraînement en vidéo','Système de relecture immédiate pour les arbitres lors d\'une contestation','Une émission sportive','Un système d\'enregistrement des grades'], correct:1},
+        {q:'En arbitrage poomsé, que désigne le terme "Sinan" ?', opts:['Un coup de pied','Une erreur de diagramme','La confiance et l\'esprit martial dégagés','Un déplacement'], correct:2},
+        {q:'Comment s\'appelle le document officiel du WT définissant les règles de compétition ?', opts:['Manuel FFTDA','Règlement technique WT (Competition Rules)','Kukkiwon Textbook','Code de l\'arbitre'], correct:1},
+        {q:'En poomsé, les "AP" et "Yop" dans le diagramme désignent...', opts:['Des types de techniques','Les directions de déplacement (avant et côté)','Des niveaux d\'attaque','Des positions de garde'], correct:1},
+        {q:'Quel critère spécifique au 5e Dan est évalué lors du Module B arbitrage ?', opts:['Lecture de règlement uniquement','QCM sur les règles avancées de compétition et filière arbitrage — 15 questions, 15 min max','Arbitrage pratique d\'un combat','Rédaction d\'un rapport arbitral'], correct:1},
+        {q:'Qu\'est-ce que la "Grand Final" dans le circuit WT ?', opts:['La finale du championnat du monde','La dernière compétition du Grand Prix Series couronnant le classement annuel','Un match de gala de fin de saison','La finale du championnat continental'], correct:1},
+        {q:'En poomsé par équipes, combien de membres composent une équipe ?', opts:['2','3','4','5'], correct:1},
+        {q:'En combat PSS, quel capteur valide un point au corps ?', opts:['Capteur du casque','Capteur du plastron électronique','Juge de coin uniquement','Capteur des chaussons'], correct:1},
+        {q:'Le module B est acquis si le candidat obtient une note...', opts:['Supérieure à 10/15','Égale ou supérieure à 7,5/15 pour chacune des deux parties','Supérieure à 12/15','De 8/15 au total'], correct:1},
+      ],
+      theorie_theme: 'Mémoire 5e Dan — thèmes fixés par l\'annexe CSDGE (+ version Kukkiwon en anglais)',
+      theorie_qcm: [
+        {q:'Le mémoire du 5e Dan doit être rédigé en...', opts:['Français uniquement','Français + version Kukkiwon en anglais','Coréen et français','Anglais uniquement'], correct:1},
+        {q:'Quel titre coréen est attribué au 5e Dan ?', opts:['Jo-Kyo-Nim','Kyo-Sa-Nim','Sa-Bon-Nim','Soo-Suk-Sa-Bon-Nim'], correct:3},
+        {q:'Quel est le prérequis de temps de pratique pour passer le 5e Dan ?', opts:['3 ans en 4e Dan','4 ans en 4e Dan','5 années de pratique (saison en cours)','6 ans en 4e Dan'], correct:2},
+        {q:'Qu\'est-ce que le Poomsae "Pyonwon" symbolise ?', opts:['La montagne','La plaine — étendue et flexibilité','Le diamant — dureté','Le feu — passion'], correct:1},
+        {q:'Les sources officielles pour la rédaction du mémoire du 5e Dan sont...', opts:['Uniquement les livres du club','Documents CSDGE + Kukkiwon Textbook (version anglaise)','Tout document internet','Seul le règlement FFTDA'], correct:1},
+        {q:'Au 5e Dan, les candidats +60 ans bénéficient d\'aménagements pour les coups de pied sautés :', opts:['Ils sont dispensés totalement','Les coups de pied sautés peuvent être remplacés par des coups de pied au sol','Ils effectuent la moitié des techniques','La vitesse est réduite de moitié'], correct:1},
+        {q:'Le Module C du 5e Dan comprend le Ho Shin Sul avec des dégagements utilisant...', opts:['Les clés articulaires uniquement','Les points vitaux (étranglement, ceinturage)','Les projections uniquement','Les balayages de jambes'], correct:1},
+        {q:'En quoi consiste le Kyorugui pour les candidats +60 ans au 5e Dan ?', opts:['Ils sont dispensés','2 rounds en mode "Assauts"','1 round uniquement','Combat normal sans aménagement'], correct:1},
+        {q:'Quel est le poomsé supérieur tiré au sort pour le 5e Dan (en plus du tirage Taegueug) ?', opts:['Uniquement Taebek','1 tiré au sort parmi Koryo, Keumgan ou Taebek','Keumgan obligatoire','Pyonwon tiré une seconde fois'], correct:1},
+        {q:'Dans le cadre du 5e Dan, combien de cartes Kibon sont tirées au sort ?', opts:['4 cartes (1 par groupe)','6 cartes (2 par groupe : 2 MS, 2 MI, 2 Mixte)','8 cartes au total','3 cartes uniquement'], correct:1},
+        {q:'Les enchaînements Kibon sont présentés combien de fois en aller-retour au jury ?', opts:['2 fois','4 fois','6 fois','1 seule fois'], correct:1},
+        {q:'Qu\'évalue principalement le jury lors des enchaînements Kibon ?', opts:['La rapidité uniquement','Maîtrise technique, précision, concentration, puissance, efficacité, vitesse, terminologie, équilibre','Le nombre de techniques mémorisées','L\'amplitude des techniques uniquement'], correct:1},
+        {q:'Le mémoire du 5e Dan aborde des thèmes fixés dans...', opts:['Le règlement interne du club','L\'annexe de l\'examen 5e Dan publiée par la CSDGE','Le Kukkiwon Textbook uniquement','La notice du passeport sportif'], correct:1},
+        {q:'Le Taekwondo Taegueug Sa Jang porte le tirage au sort pour le 5e Dan car...', opts:['C\'est le plus beau poomsé','Le tirage s\'effectue entre Sa Jang (4) et Pal Jang (8)','C\'est le 4e poomsé, imposé systématiquement','C\'est le seul poomsé Taegueug exigé'], correct:1},
+        {q:'Le module B est acquis si le candidat obtient...', opts:['Supérieure à 10/15','Égale ou supérieure à 7,5/15 pour chacune des deux parties','Supérieure à 12/15','De 8/15 au total'], correct:1},
+      ],
+    },
+    moduleC: {
+      hanbon: {
+        note: '/20',
+        fixe: [
+          {texte:'2 Han Bon membres supérieurs'},
+          {texte:'2 Han Bon membres inférieurs'},
+          {texte:'2 Han Bon membres inférieurs sautés — Les 6 contres exécutés dans l\'ordre et consécutivement'},
+        ],
+        criteres: ['Originalité, difficulté et réalisme','Précision des techniques et concentration','Maîtrise, équilibre et efficacité','Vitesse de réaction et d\'exécution'],
+      },
+      hss: {
+        label: 'Ho Shin Sul — Points vitaux',
+        note: '/20',
+        imposes: [],
+        tirage: [
+          'Dégagement sur étranglement — utilisation des points vitaux',
+          'Dégagement sur ceinturage de face, bras non pris — utilisation des points vitaux',
+          'Saisie de la ceinture + 2 techniques du programme 1er, 2e, 3e ou 4e Dan (demandées par le jury)',
+        ],
+        nb_tirage: 3,
+        note_speciale: 'Les gestes de self-défense sont libres, seules les attaques sont codifiées. Les 5 enchaînements sont exécutés dans l\'ordre et consécutivement par chaque candidat.',
+      },
+      kyorugui: {
+        note: '/30',
+        format: '2 rounds × 1 minute (candidats +60 ans : 2 rounds en mode Assauts)',
+        equipements: ['Coquille','Pitaines','Mitaines','Casque','Protège-tibias','Protège avant-bras','Protège-dents','Plastron (électronique en compétition)'],
+        consignes: [
+          'Les combats se déroulent selon les règles FFTDA — exception des catégories de poids',
+          '15 points accordés par round — les points marqués ne sont pas comptabilisés',
+          'Évaluation : précision, sens tactique, stratégies, qualité technique, combativité',
+          'Candidats +60 ans : coups de pied sautés remplaçables par coups de pied au sol',
+          'Regroupement par catégories d\'âge, de poids et de sexe dans la mesure du possible',
+        ],
+      },
+    },
+  },
+};
+
+// ============================================================
+// LOGIQUE GÉNÉRATION EXAMEN
+// ============================================================
+function pickN(arr, n) { return [...arr].sort(() => Math.random() - 0.5).slice(0, n); }
+
+let selectedExamCat = '';
+let arbAnswers = {};
+let theoAnswers = {};
+let arbQuestions = [];
+let theoQuestions = [];
+
+function selectExamCat(cat) {
+  selectedExamCat = cat;
+  document.getElementById('btn-keup').classList.toggle('selected', cat==='keup');
+  document.getElementById('btn-dan').classList.toggle('selected', cat==='dan');
+  document.getElementById('keup-grade-selector').style.display = cat==='keup' ? 'block' : 'none';
+  document.getElementById('dan-grade-selector').style.display = cat==='dan' ? 'block' : 'none';
+  document.getElementById('exam-generate-section').style.display = 'none';
+  currentExamGrade = '';
+}
+
+function selectExamGrade(grade, el) {
+  document.querySelectorAll('.grade-select-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  currentExamGrade = grade;
+  document.getElementById('exam-grade-display').textContent = grade;
+  document.getElementById('exam-generate-section').style.display = 'block';
+}
+
+function generateExam() {
+  if (!currentExamGrade) return;
+  const data = EXAM_DATA[currentExamGrade];
+  if (!data) {
+    alert('Examen blanc non disponible pour ce grade — contenu en cours d\'intégration.');
+    return;
+  }
+  document.getElementById('exam-step1').classList.remove('active');
+  document.getElementById('exam-result').classList.add('active');
+  document.getElementById('exam-result-title').textContent = currentExamGrade;
+  const now = new Date();
+  document.getElementById('exam-result-date').textContent =
+    'Généré le ' + now.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}) +
+    ' à ' + now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('exam-score').style.display = 'none';
+  arbAnswers = {}; theoAnswers = {};
+  renderModuleA(data);
+  renderModuleB(data);
+  renderModuleC(data);
+}
+
+// ── MODULE A ──────────────────────────────────────────────────
+function renderModuleA(data) {
+  const a = data.moduleA;
+  document.getElementById('moduleA-note-badge').innerHTML =
+    '<span class="note-badge">Module A — ' + a.note + '</span>';
+
+  // Poomsé
+  const hasTirage1 = a.poomsae_tirage_1 && a.poomsae_tirage_1.length;
+  const hasTirage2 = a.poomsae_tirage_2 && a.poomsae_tirage_2.length;
+  const sort1 = hasTirage1 ? pickN(a.poomsae_tirage_1, 1) : [];
+  const sort2 = hasTirage2 ? pickN(a.poomsae_tirage_2, 1) : [];
+  const sortMain = pickN(a.poomsae_tirage || [], a.nb_tirage || 1);
+
+  let poHtml = '<div style="margin-bottom:20px;"><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px;">Poomsé</div><div style="display:flex;flex-direction:column;gap:10px;">';
+  (a.poomsae_imposes || []).forEach(p => {
+    poHtml += '<div style="display:flex;align-items:center;gap:12px;background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.2);border-radius:8px;padding:12px 16px;"><span style="background:rgba(201,168,76,0.2);color:var(--gold);font-size:10px;padding:3px 8px;border-radius:4px;font-weight:500;letter-spacing:0.06em;flex-shrink:0;">IMPOSÉ</span><span style="font-size:14px;color:var(--text);font-weight:500;">' + p + '</span></div>';
+  });
+  if (hasTirage1) {
+    sort1.forEach(p => {
+      poHtml += '<div style="display:flex;align-items:center;gap:12px;background:var(--bg3);border:1px solid #333;border-radius:8px;padding:12px 16px;"><span style="background:rgba(76,127,201,0.2);color:#7ab0e8;font-size:10px;padding:3px 8px;border-radius:4px;font-weight:500;letter-spacing:0.06em;flex-shrink:0;">TIRAGE GROUPE</span><span style="font-size:14px;color:var(--text);">' + p + '</span><span style="margin-left:auto;font-size:18px;">🎲</span></div>';
+    });
+    sort2.forEach(p => {
+      poHtml += '<div style="display:flex;align-items:center;gap:12px;background:var(--bg3);border:1px solid #333;border-radius:8px;padding:12px 16px;"><span style="background:rgba(76,127,201,0.2);color:#7ab0e8;font-size:10px;padding:3px 8px;border-radius:4px;font-weight:500;letter-spacing:0.06em;flex-shrink:0;">TIRAGE TAEGUEUG</span><span style="font-size:14px;color:var(--text);">' + p + '</span><span style="margin-left:auto;font-size:18px;">🎲</span></div>';
+    });
+  } else if (hasTirage2) {
+    sortMain.forEach(p => {
+      poHtml += '<div style="display:flex;align-items:center;gap:12px;background:var(--bg3);border:1px solid #333;border-radius:8px;padding:12px 16px;"><span style="background:rgba(76,127,201,0.2);color:#7ab0e8;font-size:10px;padding:3px 8px;border-radius:4px;font-weight:500;letter-spacing:0.06em;flex-shrink:0;">TIRAGE SUPÉRIEUR</span><span style="font-size:14px;color:var(--text);">' + p + '</span><span style="margin-left:auto;font-size:18px;">🎲</span></div>';
+    });
+    sort2.forEach(p => {
+      poHtml += '<div style="display:flex;align-items:center;gap:12px;background:var(--bg3);border:1px solid #333;border-radius:8px;padding:12px 16px;"><span style="background:rgba(76,127,201,0.2);color:#7ab0e8;font-size:10px;padding:3px 8px;border-radius:4px;font-weight:500;letter-spacing:0.06em;flex-shrink:0;">TIRAGE TAEGUEUG</span><span style="font-size:14px;color:var(--text);">' + p + '</span><span style="margin-left:auto;font-size:18px;">🎲</span></div>';
+    });
+  } else {
+    sortMain.forEach(p => {
+      poHtml += '<div style="display:flex;align-items:center;gap:12px;background:var(--bg3);border:1px solid #333;border-radius:8px;padding:12px 16px;"><span style="background:rgba(76,127,201,0.2);color:#7ab0e8;font-size:10px;padding:3px 8px;border-radius:4px;font-weight:500;letter-spacing:0.06em;flex-shrink:0;">TIRÉ AU SORT</span><span style="font-size:14px;color:var(--text);">' + p + '</span><span style="margin-left:auto;font-size:18px;">🎲</span></div>';
+    });
+  }
+  poHtml += '</div></div>';
+  document.getElementById('moduleA-poomsae').innerHTML = poHtml;
+
+  // Kibon 2+2+2
+  const ms2 = pickN(a.kibon_ms, 2);
+  const mi2 = pickN(a.kibon_mi, 2);
+  const mx2 = pickN(a.kibon_mixte, 2);
+  const kibonGroup = (label, color, items) => {
+    return '<div style="margin-bottom:16px;"><div style="font-size:11px;color:' + color + ';text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;font-weight:500;">' + label + ' — 2 cartes tirées au sort</div>' +
+      items.map(t => '<div style="display:flex;align-items:flex-start;gap:12px;background:var(--bg3);border:1px solid #333;border-radius:8px;padding:12px 16px;margin-bottom:6px;"><div style="width:28px;height:28px;border-radius:50%;background:rgba(201,168,76,0.12);color:var(--gold);font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">🎲</div><span style="font-size:13px;color:var(--text);line-height:1.5;">' + t + '</span></div>').join('') +
+      '</div>';
+  };
+  document.getElementById('moduleA-kibon').innerHTML =
+    '<div><div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:16px;">Kibon — 6 cartes tirées au sort (2 par groupe) · présentées 4× en aller-retour</div>' +
+    kibonGroup('Membres supérieurs + positions', 'var(--gold)', ms2) +
+    kibonGroup('Membres inférieurs', '#7ab0e8', mi2) +
+    kibonGroup('Membres supérieurs + inférieurs + positions', 'var(--green)', mx2) +
+    '</div>';
+}
+
+// ── MODULE B ──────────────────────────────────────────────────
+function renderModuleB(data) {
+  const b = data.moduleB;
+  document.getElementById('moduleB-arbitrage').innerHTML = buildQcmBlock(b.arbitrage_qcm, 'arb', b.arbitrage_theme, '#7ab0e8');
+  document.getElementById('moduleB-theorie').innerHTML   = buildQcmBlock(b.theorie_qcm,  'theo', b.theorie_theme,  'var(--gold)');
+}
+
+function buildQcmBlock(pool, prefix, theme, color) {
+  const q15 = pickN(pool, 15);
+  const qStore = JSON.stringify(q15);
+  if (prefix === 'arb') { arbQuestions = q15; arbAnswers = {}; }
+  else { theoQuestions = q15; theoAnswers = {}; }
+
+  let html = '<div style="margin-bottom:28px;"><div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">' +
+    '<span style="width:10px;height:10px;border-radius:50%;background:' + color + ';flex-shrink:0;"></span>' +
+    '<div style="font-size:12px;font-weight:500;color:' + color + ';text-transform:uppercase;letter-spacing:0.08em;">' + theme + '</div></div>' +
+    '<div style="font-size:11px;color:var(--text3);margin-bottom:14px;">15 questions — Repondre pour obtenir le score partiel</div>';
+
+  q15.forEach((q, i) => {
+    const opts = [...q.opts.map((o,j)=>({o,orig:j}))].sort(()=>Math.random()-0.5);
+    const newCorrect = opts.findIndex(x => x.orig === q.correct);
+    html += '<div class="qcm-question"><div class="qcm-q"><span class="qnum">' + (i+1) + '.</span>' + q.q + '</div><div class="qcm-options">' +
+      opts.map((opt,j) => '<div class="qcm-option" id="' + prefix + '-opt-' + i + '-' + j + '" onclick="selectQcmAnswer(\'' + prefix + '\',' + i + ',' + j + ',' + newCorrect + ')"><span class="opt-letter">' + String.fromCharCode(65+j) + '</span>' + opt.o + '</div>').join('') +
+      '</div></div>';
+  });
+  html += '<button class="exam-generate-btn" style="margin-top:12px;padding:12px 20px;font-size:13px;" onclick="showPartialScore(\'' + prefix + '\')">Valider les ' + (prefix==='arb'?'Arbitrage':'Théorie') + ' →</button>' +
+    '<div id="' + prefix + '-score-result" style="display:none;margin-top:12px;"></div></div>';
+  return html;
+}
+
+function selectQcmAnswer(prefix, qi, ai, correct) {
+  const store = prefix === 'arb' ? arbAnswers : theoAnswers;
+  if (store[qi] !== undefined) return;
+  store[qi] = {chosen: ai, correct};
+  const isOk = ai === correct;
+  document.querySelectorAll('[id^="' + prefix + '-opt-' + qi + '-"]').forEach(el => {
+    const j = parseInt(el.id.split('-').pop());
+    if (j === correct) el.classList.add('correct');
+    else if (j === ai && !isOk) el.classList.add('wrong');
+  });
+}
+
+function showPartialScore(prefix) {
+  const store = prefix === 'arb' ? arbAnswers : theoAnswers;
+  const questions = prefix === 'arb' ? arbQuestions : theoQuestions;
+  const total = questions.length;
+  const correct = Object.values(store).filter(v => v.chosen === v.correct).length;
+  const pct = Math.round((correct / total) * 100);
+  const color = pct >= 50 ? 'var(--green)' : 'var(--red)';
+  const el = document.getElementById(prefix + '-score-result');
+  el.style.display = 'block';
+  el.innerHTML = '<div class="card" style="border-left:3px solid ' + color + ';">' +
+    '<div style="font-family:\'Playfair Display\',serif;font-size:26px;color:' + color + ';">' + correct + ' / ' + total + ' <span style="font-size:14px;">(' + pct + '%)</span></div>' +
+    '<div class="score-bar" style="margin:8px 0;"><div class="score-fill" style="width:' + pct + '%;background:' + color + ';"></div></div>' +
+    '<div style="font-size:12px;color:var(--text3);">' + (pct >= 50 ? '✓ Module acquis — note ≥ 7,5/15 (seuil requis pour chaque partie)' : '⚠ Note insuffisante — seuil requis : 7,5/15 pour chaque partie (Arbitrage et Théorie)') + '</div></div>';
+  el.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+// ── MODULE C ──────────────────────────────────────────────────
+function renderModuleC(data) {
+  const c = data.moduleC;
+  const hss = c.hss;
+
+  // Han Bon
+  document.getElementById('moduleC-hanbon').innerHTML =
+    '<div style="margin-bottom:20px;">' +
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">' +
+    '<span style="font-size:13px;font-weight:500;color:var(--green);">Han Bon Kyeurogui</span>' +
+    '<span class="note-badge" style="margin-left:auto;">' + c.hanbon.note + '</span></div>' +
+    '<div style="display:flex;flex-direction:column;gap:8px;">' +
+    c.hanbon.fixe.map(item =>
+      '<div style="display:flex;align-items:center;gap:12px;background:var(--bg3);border:1px solid rgba(76,175,122,0.3);border-radius:8px;padding:12px 16px;">' +
+      '<span style="background:rgba(76,175,122,0.15);color:var(--green);font-size:10px;padding:3px 8px;border-radius:4px;font-weight:500;letter-spacing:0.06em;flex-shrink:0;">IMPOSÉ</span>' +
+      '<span style="font-size:13px;color:var(--text);">' + item.texte + '</span></div>'
+    ).join('') + '</div>' +
+    '<div style="margin-top:12px;background:var(--bg3);border-radius:8px;padding:12px 16px;border:1px solid #2a2a2a;">' +
+    '<div style="font-size:11px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.08em;">Critères d\'évaluation</div>' +
+    c.hanbon.criteres.map(cr => '<div style="font-size:12px;color:var(--text2);padding:2px 0;">• ' + cr + '</div>').join('') +
+    '</div></div>';
+
+  // Ho Shin Sul
+  const tires = pickN(hss.tirage, hss.nb_tirage);
+  document.getElementById('moduleC-hss').innerHTML =
+    '<div style="margin-bottom:20px;">' +
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">' +
+    '<span style="font-size:13px;font-weight:500;color:var(--green);">' + (hss.label || 'Ho Shin Sul') + '</span>' +
+    '<span class="note-badge" style="margin-left:auto;">' + hss.note + '</span></div>' +
+    '<div style="display:flex;flex-direction:column;gap:8px;">' +
+    hss.imposes.map(item =>
+      '<div style="display:flex;align-items:center;gap:12px;background:var(--bg3);border:1px solid rgba(76,175,122,0.3);border-radius:8px;padding:12px 16px;">' +
+      '<span style="background:rgba(76,175,122,0.15);color:var(--green);font-size:10px;padding:3px 8px;border-radius:4px;font-weight:500;letter-spacing:0.06em;flex-shrink:0;">IMPOSÉ</span>' +
+      '<span style="font-size:13px;color:var(--text);">' + item + '</span></div>'
+    ).join('') +
+    tires.map(item =>
+      '<div style="display:flex;align-items:center;gap:12px;background:rgba(76,127,201,0.05);border:1px solid rgba(76,127,201,0.25);border-radius:8px;padding:12px 16px;">' +
+      '<span style="background:rgba(76,127,201,0.15);color:#7ab0e8;font-size:10px;padding:3px 8px;border-radius:4px;font-weight:500;letter-spacing:0.06em;flex-shrink:0;">TIRÉ AU SORT</span>' +
+      '<span style="font-size:13px;color:var(--text);">' + item + '</span>' +
+      '<span style="margin-left:auto;font-size:16px;" title="Régénérable">🎲</span></div>'
+    ).join('') + '</div>' +
+    (hss.note_speciale ? '<div style="margin-top:10px;font-size:12px;color:var(--text3);font-style:italic;padding:10px 14px;background:var(--bg3);border-radius:6px;border-left:3px solid #555;">' + hss.note_speciale + '</div>' : '') +
+    '</div>';
+
+  // Kyorugui
+  const ky = c.kyorugui;
+  document.getElementById('moduleC-kyorugui').innerHTML =
+    '<div style="margin-bottom:24px;">' +
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">' +
+    '<span style="font-size:13px;font-weight:500;color:var(--green);">Kyorugui</span>' +
+    '<span class="note-badge" style="margin-left:auto;">' + ky.note + '</span></div>' +
+    '<div style="background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.2);border-radius:8px;padding:14px 16px;margin-bottom:12px;">' +
+    '<div style="font-size:11px;color:var(--gold);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Format officiel</div>' +
+    '<div style="font-size:15px;font-family:\'Playfair Display\',serif;color:var(--text);">' + ky.format + '</div></div>' +
+    '<div class="grid-2" style="gap:12px;">' +
+    '<div style="background:var(--bg3);border:1px solid #333;border-radius:8px;padding:14px 16px;">' +
+    '<div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;">Équipements obligatoires le jour J</div>' +
+    ky.equipements.map(eq => '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px;color:var(--text);"><span style="width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0;"></span>' + eq + '</div>').join('') +
+    '</div>' +
+    '<div style="background:var(--bg3);border:1px solid #333;border-radius:8px;padding:14px 16px;">' +
+    '<div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;">Consignes du jury</div>' +
+    ky.consignes.map(co => '<div style="font-size:12px;color:var(--text2);padding:4px 0;border-bottom:1px solid #222;line-height:1.5;">• ' + co + '</div>').join('') +
+    '</div></div></div>';
+}
+
+function regenerate() { generateExam(); }
+
+// DICT
+function renderDict(filter, search) {
+  filter = filter || currentFilter;
+  search = search || document.getElementById('dict-search').value.toLowerCase();
+  let entries = DICT_DATA.filter(e => {
+    const matchFilter = filter === 'tous' || e.ctx === filter;
+    const matchSearch = !search || e.fr.toLowerCase().includes(search) || e.roman.toLowerCase().includes(search) || e.ko.includes(search);
+    return matchFilter && matchSearch;
+  });
+  document.getElementById('dict-list').innerHTML = entries.map(e => `
+    <div class="dict-entry">
+      <div style="min-width:70px;text-align:center;">
+        <div class="dict-hangul">${e.ko}</div>
+        <div class="dict-ko-roman">${e.roman.split(' ')[0]}</div>
+      </div>
+      <div style="flex:1;">
+        <div class="dict-fr">${e.fr}</div>
+        <div style="margin-top:4px;">
+          <span class="dict-ctx-chip">${e.ctx}</span>
+          <span class="dict-grade-chip">dès ${e.grade} Keup</span>
+        </div>
+        <div class="dict-ctx" style="margin-top:4px;font-style:italic;color:var(--text3);">${e.roman}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function setFilter(f, el) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderDict(f);
+}
+
+function filterDict() { renderDict(currentFilter); }
+</script>
+</body>
+</html>
